@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Propostas{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css/kanban.css">
+{% endblock %}
+
+{% block content %}
+
+<!-- ================= HEADER ================= -->
+<div class="kanban-header">
+  <h1>Propostas</h1>
+
+  <a href="/propostas/nova" class="btn-primary">
+    + Nova Proposta
+  </a>
+</div>
+
+<!-- ================= TABS ================= -->
+<div class="tabs">
+  <a class="tab active">Fila de Propostas</a>
+  <a class="tab" href="/propostas/historico">Histórico</a>
+</div>
+
+<!-- ================= KANBAN ================= -->
+<div class="kanban">
+
+  <!-- ================= SIMULAÇÃO ================= -->
+  <div class="kanban-column">
+    <h3>
+      Simulação
+      <span class="column-count">{{ pendentes_simulacao | length }}</span>
+    </h3>
+
+    {% for p in pendentes_simulacao %}
+    <a href="/propostas/{{ p.id }}" class="kanban-card status-simulacao">
+
+      <div class="card-header">
+        <span class="card-id">#{{ p.display_numero if p.display_numero is defined else (p.id_bling or p.id) }}</span>
+        <span class="badge badge-simulacao">Simulação</span>
+        {% if (p.valor_total or 0) > 0 %}
+        <span class="card-price">{{ p.valor_total | money }}</span>
+        {% endif %}
+      </div>
+
+      <div class="card-body">
+        <div class="meta-left">
+          <div class="cliente">{{ p.cliente.nome if p.cliente else (p.cliente_nome if p.cliente_nome is defined else
+            '—')
+            }}</div>
+          {% if p.cliente and p.cliente.documento %}
+          <div class="cliente-doc">{{ p.cliente.documento }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <span class="vendedor">
+          {{ p.vendedor_bling if p.vendedor_bling else (p.vendedor.nome if p.vendedor else "—") }}
+        </span>
+        <span class="tempo">
+          {{ p.tempo_criado }}
+        </span>
+      </div>
+
+    </a>
+    {% else %}
+    <p class="empty">Nenhuma proposta</p>
+    {% endfor %}
+  </div>
+
+  <!-- ================= COTAÇÃO ================= -->
+  <div class="kanban-column">
+    <h3>
+      Cotação
+      <span class="column-count">{{ pendentes_cotacao | length }}</span>
+    </h3>
+
+    {% for p in pendentes_cotacao %}
+    <a href="/propostas/{{ p.id }}" class="kanban-card status-cotacao">
+
+      <div class="card-header">
+        <span class="card-id">#{{ p.display_numero }}</span>
+        <span class="badge badge-cotacao">Cotação</span>
+        {% if (p.valor_total or 0) > 0 %}
+        <span class="card-price">{{ p.valor_total | money }}</span>
+        {% endif %}
+      </div>
+
+      <div class="card-body">
+        <div class="meta-left">
+          <div class="cliente">{{ p.cliente.nome if p.cliente else (p.cliente_nome if p.cliente_nome is defined else
+            '—') }}</div>
+          {% if p.cliente and p.cliente.documento %}
+          <div class="cliente-doc">{{ p.cliente.documento }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <span class="vendedor">
+          {{ p.vendedor_bling if p.vendedor_bling else (p.vendedor.nome if p.vendedor else "—") }}
+        </span>
+        <span class="tempo">
+          {{ p.tempo_criado }}
+        </span>
+      </div>
+
+    </a>
+    {% else %}
+    <p class="empty">Nenhuma proposta</p>
+    {% endfor %}
+  </div>
+
+  <!-- ================= ENVIO ================= -->
+  <div class="kanban-column">
+    <h3>
+      Envio
+      <span class="column-count">{{ pendentes_envio | length }}</span>
+    </h3>
+
+    {% for p in pendentes_envio %}
+    <a href="/propostas/{{ p.id }}" class="kanban-card status-envio">
+
+      <div class="card-header">
+        <span class="card-id">#{{ p.display_numero }}</span>
+        <span class="badge badge-envio">Envio</span>
+        {% if (p.valor_total or 0) > 0 %}
+        <span class="card-price">{{ p.valor_total | money }}</span>
+        {% endif %}
+      </div>
+
+      <div class="card-body">
+        <div class="meta-left">
+          <div class="cliente">{{ p.cliente.nome if p.cliente else (p.cliente_nome if p.cliente_nome is defined else
+            '—') }}</div>
+          {% if p.cliente and p.cliente.documento %}
+          <div class="cliente-doc">{{ p.cliente.documento }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <span class="vendedor">
+          {{ p.vendedor_bling if p.vendedor_bling else (p.vendedor.nome if p.vendedor else "—") }}
+        </span>
+        <span class="tempo">
+          {{ p.tempo_criado }}
+        </span>
+      </div>
+
+    </a>
+    {% else %}
+    <p class="empty">Nenhuma proposta</p>
+    {% endfor %}
+  </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,197 @@
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111827;
+    margin: 0;
+    padding: 20px;
+    background: #f8fafc
+}
+
+.print-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 20px;
+    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.06)
+}
+
+.print-header {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 12px;
+    margin-bottom: 12px
+}
+
+.logo {
+    width: 120px;
+    height: 100px;
+    background: #111827;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px
+}
+
+.company-meta {
+    font-size: 12px;
+    line-height: 1.25
+}
+
+.doc-info {
+    margin-left: auto;
+    text-align: right
+}
+
+.doc-info h2 {
+    margin: 0 0 6px 0;
+    font-size: 18px
+}
+
+.internal-id {
+    font-size: 11px;
+    color: #6b7280
+}
+
+.meta-table {
+    font-size: 12px;
+    border-collapse: collapse;
+}
+
+.meta-table td {
+    border: 1px solid #e5e7eb;
+    padding: 6px 8px
+}
+
+.to {
+    margin-bottom: 12px;
+    font-size: 13px
+}
+
+.to strong {
+    display: block;
+    margin-bottom: 6px
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 8px
+}
+
+.items-table th,
+.items-table td {
+    border: 1px solid #000;
+    padding: 6px 8px;
+    vertical-align: middle;
+}
+
+.items-table th {
+    border: 1px solid #000;
+    padding: 8px 10px;
+    vertical-align: middle;
+    font-weight: 700;
+    text-align: left;
+}
+
+.items-table th {
+    background: #f3f4f6;
+    font-weight: 700;
+    text-align: left
+}
+
+.img-cell {
+    width: 80px;
+}
+
+.items-title {
+    margin: 10px 0 8px 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.vendedor-line {
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.num { text-align: right }
+.center { text-align: center }
+
+.thumb {
+    width: 40px;
+    height: 40px;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: #374151;
+    font-size: 10px;
+}
+
+.thumb-img {
+    max-width: 40px;
+    max-height: 40px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.items-table tbody tr:nth-child(even) {
+    background: #ffffff;
+}
+
+.items-table tbody tr:nth-child(odd) {
+    background: #ffffff;
+}
+
+/* tighter layout to mimic PDF */
+.items-table {
+    table-layout: fixed;
+    font-size: 11px;
+}
+
+.items-table td, .items-table th { overflow: hidden; word-break: break-word }
+
+.print-footer {
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    align-items: center
+}
+
+.totals {
+    text-align: right
+}
+
+.totals .grand {
+    font-size: 16px;
+    margin-top: 6px
+}
+
+@media print {
+    body {
+        padding: 0;
+        background: #fff
+    }
+
+    .print-container {
+        margin: 0;
+        box-shadow: none;
+        padding: 0
+    }
+
+    .print-header,
+    .items-table th,
+    .items-table td {
+        -webkit-print-color-adjust: exact
+    }
+
+    .logo {
+        background: #000
+    }
+}

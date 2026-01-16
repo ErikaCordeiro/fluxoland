@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <title>Proposta {{ proposta.id }}</title>
+    <link rel="stylesheet" href="/static/css/proposta_print.css">
+</head>
+
+<body>
+    <div class="print-container">
+        <header class="print-header">
+            <div class="logo">AM<br>FERRAMENTAS</div>
+            <div class="company-meta">
+                <strong>AM FERRAMENTAS IND E COMÉRCIO DE FERRAMENTAS ESPECIAIS LTDA</strong>
+                <div>Rua João Ebel, Nº 79</div>
+                <div>Blumenau, SC</div>
+                <div>Telefone: (47) 99911-7907</div>
+                <div>CNPJ: 23.224.473/0001-78</div>
+            </div>
+            <div class="doc-info">
+                <h2>Proposta Nº {{ proposta.display_numero }}</h2>
+                <div class="internal-id">Interno: {{ proposta.id }}</div>
+                <table class="meta-table">
+                    <tr>
+                        <td>Número</td>
+                        <td>{{ proposta.id }}</td>
+                    </tr>
+                    <tr>
+                        <td>Data</td>
+                        <td>{{ proposta.criado_em.strftime('%d/%m/%Y') if proposta.criado_em else '' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </header>
+
+        <section class="to">
+            <div>
+                <strong>Para</strong>
+                <div>{{ proposta.cliente.nome if proposta.cliente else '' }}</div>
+                {% if proposta.cliente and proposta.cliente.documento %}<div>{{ proposta.cliente.documento }}</div>{%
+                endif %}
+                {% if proposta.cliente and proposta.cliente.endereco %}<div>{{ proposta.cliente.endereco }}</div>{%
+                endif %}
+                {% if proposta.cliente and proposta.cliente.cidade %}<div>{{ proposta.cliente.cidade }}</div>{% endif %}
+                {% if proposta.cliente and proposta.cliente.telefone %}<div>Fone: {{ proposta.cliente.telefone }}</div>
+                {% endif %}
+                {% if proposta.cliente and proposta.cliente.email %}<div>Email: {{ proposta.cliente.email }}</div>{%
+                endif %}
+            </div>
+        </section>
+
+        <section class="proposal-meta">
+            <div class="vendedor-line">Vendedor(a): {{ proposta.vendedor.nome if proposta.vendedor else '' }}</div>
+            <h3 class="items-title">Itens da proposta comercial</h3>
+        </section>
+
+        <section class="items">
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Imagem</th>
+                        <th>Descrição do produto/serviço</th>
+                        <th>NCM</th>
+                        <th>Código</th>
+                        <th>Un</th>
+                        <th>Qtd.</th>
+                        <th class="num">Preço lista</th>
+                        <th class="num">Desconto %</th>
+                        <th class="num">IPI %</th>
+                        <th class="num">Preço un.</th>
+                        <th class="num">Preço total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                    <tr>
+                        {% set q = (item.quantidade if item.quantidade is defined else (item.get('quantidade') if
+                        item.get is defined else 0)) %}
+                        {% set pu = (item.preco_unitario if item.preco_unitario is defined else
+                        (item.get('preco_unitario') if item.get is defined else 0)) %}
+                        {% set pt = (item.preco_total if item.preco_total is defined else (pu * q)) %}
+                        <td class="img-cell">
+                            {% if item.imagem_url or (item.produto and item.produto.imagem_url) %}
+                            <img src="{{ item.imagem_url or item.produto.imagem_url }}" alt="img" class="thumb-img">
+                            {% elif item.produto and (item.produto.sku or item.produto.nome) %}
+                            <div class="thumb">{{ (item.produto.sku or item.produto.nome)[:2] }}</div>
+                            {% else %}
+                            <div class="thumb">—</div>
+                            {% endif %}
+                        </td>
+                        <td>{{ (item.produto.nome if item.produto else item.nome) or item.codigo or '' }}</td>
+                        <td class="center">{{ item.ncm or '' }}</td>
+                        <td class="center">{{ item.codigo or (item.produto.sku if item.produto else '') }}</td>
+                        <td class="center">UN</td>
+                        <td class="num">{{ ('%.4f' % (q or 0)).replace('.', ',') }}</td>
+                        <td class="num">{{ ('%.8f' % (pu or 0)).replace('.', ',') }}</td>
+                        <td class="num">{{ ('%.2f' % 0).replace('.', ',') }}</td>
+                        <td class="num">{{ ('%.2f' % 0).replace('.', ',') }}</td>
+                        <td class="num">{{ ('%.8f' % (pu or 0)).replace('.', ',') }}</td>
+                        <td class="num">{{ (pt or 0) | round(2) | money_no_symbol }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <footer class="print-footer">
+            <div>Vendedor: {{ proposta.vendedor.nome if proposta.vendedor else '' }}</div>
+            <div class="totals">
+                <div>Total itens: {{ (proposta.valor_total or (itens|sum(attribute='preco_total') if itens else 0)) |
+                    money }}</div>
+                <div>Frete: {{ (proposta.valor_frete or 0) | money }}</div>
+                <div class="grand">Total da proposta: {{ ((proposta.valor_total or (itens|sum(attribute='preco_total')
+                    if itens else 0)) + (proposta.valor_frete or 0)) | money }}</div>
+            </div>
+        </footer>
+
+    </div>
+</body>
+
+</html>

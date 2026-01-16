@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Caixas{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>Caixas</h1>
+
+  <a href="/caixas/nova" class="btn-primary">
+    + Nova Caixa
+  </a>
+</div>
+
+<div class="card">
+  <h2>Lista de Caixas</h2>
+
+  {% if caixas %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Dimensões (A × L × C)</th>
+          <th>Volume (cm³)</th>
+          <th style="width: 100px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in caixas %}
+          <tr>
+            <td>{{ c.nome }}</td>
+            <td>
+              {{ c.altura_cm }} × {{ c.largura_cm }} × {{ c.comprimento_cm }}
+            </td>
+            <td>
+              {{ "%.2f"|format(c.volume_cm3) }}
+            </td>
+            <td>
+              <form
+                method="post"
+                action="/caixas/{{ c.id }}/excluir"
+                onsubmit="return confirm('Tem certeza que deseja excluir esta caixa?');"
+              >
+                <button type="submit" class="btn-icon">🗑️</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Nenhuma caixa cadastrada.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

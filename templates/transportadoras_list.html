@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Transportadoras{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>Transportadoras</h1>
+
+  {% if user.role.value == "lider" %}
+  <button class="btn-primary" onclick="abrirModalNovaTransportadora()">
+    + Nova Transportadora
+  </button>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Lista de Transportadoras</h2>
+
+  {% if transportadoras %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th style="width: 120px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transportadoras %}
+          <tr>
+            <td>{{ t.nome }}</td>
+            <td>
+              {% if user.role.value == "lider" %}
+              <form
+                method="post"
+                action="/transportadoras/{{ t.id }}/excluir"
+                style="display:inline;"
+                onsubmit="return confirm('Deseja excluir esta transportadora?');"
+              >
+                <button type="submit" class="btn-link danger">🗑️</button>
+              </form>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Nenhuma transportadora cadastrada.</p>
+  {% endif %}
+</div>
+
+<!-- ================= MODAL NOVA TRANSPORTADORA ================= -->
+<div id="modalNovaTransportadora" class="modal" style="display:none;">
+  <div class="modal-content">
+    <h3>Adicionar Transportadora</h3>
+
+    <form method="post" action="/transportadoras/nova">
+      <div class="form-group">
+        <label>Nome da Transportadora</label>
+        <input
+          type="text"
+          name="nome"
+          placeholder="Digite o nome da transportadora"
+          required
+        >
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="fecharModalNovaTransportadora()">
+          Cancelar
+        </button>
+        <button type="submit" class="btn-primary">
+          Adicionar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function abrirModalNovaTransportadora() {
+    document.getElementById("modalNovaTransportadora").style.display = "block";
+  }
+
+  function fecharModalNovaTransportadora() {
+    document.getElementById("modalNovaTransportadora").style.display = "none";
+  }
+</script>
+
+{% endblock %}

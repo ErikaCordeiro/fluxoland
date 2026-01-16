@@ -1,0 +1,30 @@
+/* LOGIN */
+
+.login-wrapper {
+  min-height: calc(100vh - 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  width: 360px;
+}
+
+.login-card h2 {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* ALERTA */
+.alert {
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+
+.alert-error {
+  background: #fee2e2;
+  color: #991b1b;
+}

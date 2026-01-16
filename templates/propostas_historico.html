@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico de Propostas{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css/historico.css">
+{% endblock %}
+
+{% block content %}
+<h1>Histórico de Propostas</h1>
+
+<div class="tabs">
+  <a class="tab" href="/propostas">Fila de Propostas</a>
+  <a class="tab active">Histórico</a>
+</div>
+
+<!-- ================= FILTROS ================= -->
+<form method="get" class="kanban-filters">
+
+  <input type="text" name="cliente" placeholder="Cliente" value="{{ request.query_params.get('cliente', '') }}">
+
+  <select name="vendedor">
+    <option value="">Todos vendedores</option>
+    {% for v in vendedores %}
+    <option value="{{ v.id }}" {% if request.query_params.get('vendedor')==v.id|string %} selected {% endif %}>
+      {{ v.nome }}
+    </option>
+    {% endfor %}
+  </select>
+
+  <select name="periodo">
+    <option value="">Qualquer data</option>
+    <option value="hoje" {% if request.query_params.get('periodo')=='hoje' %}selected{% endif %}>
+      Hoje
+    </option>
+    <option value="7" {% if request.query_params.get('periodo')=='7' %}selected{% endif %}>
+      Últimos 7 dias
+    </option>
+    <option value="30" {% if request.query_params.get('periodo')=='30' %}selected{% endif %}>
+      Últimos 30 dias
+    </option>
+  </select>
+
+  <button type="submit" class="btn-primary">Filtrar</button>
+
+  <a href="/propostas/historico" class="btn-clear">Limpar</a>
+</form>
+
+<table class="historico-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Cliente</th>
+      <th>Valor</th>
+      <th>Status</th>
+      <th>Data</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for h in historico %}
+    <tr>
+      <td>
+        <a href="/propostas/{{ h.proposta.id }}">#{{ h.proposta.display_numero if h.proposta.display_numero is defined
+          else (h.proposta.id_bling or h.proposta.id) }}</a>
+      </td>
+
+      <td>
+        {{ h.proposta.cliente.nome if h.proposta and h.proposta.cliente else "-" }}
+      </td>
+
+      <td>
+        {% if h.proposta and h.proposta.itens %}
+        {{ (h.proposta.valor_total | default(0)) | money }}
+        {% else %}
+        -
+        {% endif %}
+      </td>
+
+      <td class="status {{ h.status.value if h.status else '' }}">
+        {{ h.status.value if h.status else h.status }}
+      </td>
+
+      <td>
+        {{ h.criado_em.strftime("%d/%m/%Y %H:%M") if h.criado_em else "" }}
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="5" style="text-align:center; padding:20px;">
+        Nenhum histórico encontrado.
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

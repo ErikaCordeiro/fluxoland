@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}Simulações{% endblock %}
+
+{% block css %}
+<style>
+    .simulacoes-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .simulacoes-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .simulacoes-header h1 {
+        font-size: 2rem;
+        color: #1e293b;
+    }
+
+    .search-box {
+        max-width: 400px;
+        margin-bottom: 1.5rem;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.95rem;
+    }
+
+    .simulacoes-table {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    thead {
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    thead th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+        transition: background-color 0.2s;
+    }
+
+    tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    tbody td {
+        padding: 1rem;
+        color: #334155;
+    }
+
+    .simulacao-numero {
+        font-weight: 600;
+        color: #3b82f6;
+    }
+
+    .simulacao-itens {
+        font-size: 0.875rem;
+        color: #64748b;
+        max-width: 400px;
+    }
+
+    .item-line {
+        margin: 0.25rem 0;
+    }
+
+    .item-qty {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .item-sku {
+        color: #94a3b8;
+        font-size: 0.8rem;
+    }
+
+    .badge-tipo {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .badge-manual {
+        background: #e0e7ff;
+        color: #4f46e5;
+    }
+
+    .badge-volumes {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+
+    .proposta-link {
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .proposta-link:hover {
+        text-decoration: underline;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #94a3b8;
+    }
+
+    .empty-state h3 {
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-icon {
+        padding: 0.5rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        color: #64748b;
+        transition: color 0.2s;
+        font-size: 1.1rem;
+    }
+
+    .btn-icon:hover {
+        color: #3b82f6;
+    }
+
+    .btn-delete:hover {
+        color: #ef4444;
+    }
+
+    .edit-form {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .edit-input {
+        padding: 0.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        width: 200px;
+    }
+
+    .btn-save {
+        padding: 0.5rem 1rem;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+
+    .btn-save:hover {
+        background: #2563eb;
+    }
+
+    .btn-cancel {
+        padding: 0.5rem 1rem;
+        background: #e2e8f0;
+        color: #64748b;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+
+    .btn-cancel:hover {
+        background: #cbd5e1;
+    }
+
+    .descricao-display {
+        cursor: pointer;
+    }
+
+    .descricao-display:hover {
+        color: #3b82f6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="simulacoes-container">
+    <div class="simulacoes-header">
+        <h1>Simulações</h1>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Pesquisar simulações...">
+    </div>
+
+    <div class="simulacoes-table">
+        {% if simulacoes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Simulação #</th>
+                    <th>Itens</th>
+                    <th>Caixas & Pesos</th>
+                    <th>Data</th>
+                    <th>Proposta</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="simulacoesTable">
+                {% for sim in simulacoes %}
+                <tr>
+                    <td>
+                        <span class="simulacao-numero">#{{ loop.index0 + 10000 }}</span>
+                    </td>
+                    <td>
+                        <div class="simulacao-itens">
+                            {% for item in sim.proposta.itens %}
+                            <div class="item-line">
+                                <span class="item-qty">{{ item.quantidade }}x</span>
+                                {{ item.produto.nome if item.produto else item.codigo }}
+                                <span class="item-sku">({{ item.produto.sku if item.produto else item.codigo }})</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>
+                        <div id="desc-display-{{ sim.id }}" class="descricao-display"
+                            onclick="editarDescricao({{ sim.id }}, '{{ sim.descricao|e if sim.descricao else '' }}')">
+                            {% if sim.descricao %}
+                            {{ sim.descricao }}
+                            {% else %}
+                            <span class="badge-tipo badge-{{ sim.tipo }}">{{ sim.tipo }}</span>
+                            {% endif %}
+                        </div>
+                        <form id="edit-form-{{ sim.id }}" class="edit-form" style="display: none;" method="POST"
+                            action="/simulacoes/{{ sim.id }}/editar">
+                            <input type="text" name="descricao" class="edit-input"
+                                value="{{ sim.descricao if sim.descricao else '' }}" required>
+                            <button type="submit" class="btn-save">Salvar</button>
+                            <button type="button" class="btn-cancel"
+                                onclick="cancelarEdicao({{ sim.id }})">Cancelar</button>
+                        </form>
+                    </td>
+                    <td>{{ sim.criado_em.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>
+                        <a href="/propostas/{{ sim.proposta.id }}" class="proposta-link">
+                            #{{ sim.proposta.display_numero }}
+                        </a>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-icon"
+                                onclick="editarDescricao({{ sim.id }}, '{{ sim.descricao|e if sim.descricao else '' }}')"
+                                title="Editar">
+                                ✏️
+                            </button>
+                            <form method="POST" action="/simulacoes/{{ sim.id }}/deletar" style="display: inline;"
+                                onsubmit="return confirm('Tem certeza que deseja deletar esta simulação?')">
+                                <button type="submit" class="btn-icon btn-delete" title="Deletar">
+                                    🗑️
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3>Nenhuma simulação encontrada</h3>
+            <p>As simulações aparecerão aqui quando forem criadas nas propostas.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Filtro de busca
+    const searchInput = document.getElementById('searchInput');
+    const table = document.getElementById('simulacoesTable');
+
+    if (searchInput && table) {
+        searchInput.addEventListener('input', function (e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const rows = table.getElementsByTagName('tr');
+
+            for (let row of rows) {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            }
+        });
+    }
+
+    // Funções de edição
+    function editarDescricao(id, descricaoAtual) {
+        // Esconde o display e mostra o form
+        document.getElementById('desc-display-' + id).style.display = 'none';
+        document.getElementById('edit-form-' + id).style.display = 'flex';
+
+        // Foca no input
+        const input = document.querySelector('#edit-form-' + id + ' input[name="descricao"]');
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    }
+
+    function cancelarEdicao(id) {
+        // Mostra o display e esconde o form
+        document.getElementById('desc-display-' + id).style.display = 'block';
+        document.getElementById('edit-form-' + id).style.display = 'none';
+    }
+</script>
+{% endblock %}

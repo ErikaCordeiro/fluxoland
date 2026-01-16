@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Caixa{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <h2>Adicionar Nova Caixa</h2>
+
+  <form method="post">
+    <label>Nome</label>
+    <input type="text" name="nome" required>
+
+    <label>Altura (cm)</label>
+    <input type="number" step="0.01" name="altura_cm" required>
+
+    <label>Largura (cm)</label>
+    <input type="number" step="0.01" name="largura_cm" required>
+
+    <label>Comprimento (cm)</label>
+    <input type="number" step="0.01" name="comprimento_cm" required>
+
+    <button type="submit" class="btn-primary">
+      Salvar
+    </button>
+
+    <a href="/caixas">Cancelar</a>
+  </form>
+</div>
+
+{% endblock %}

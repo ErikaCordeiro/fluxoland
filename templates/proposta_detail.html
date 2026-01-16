@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+
+{% block title %}Proposta #{{ proposta.display_numero }}{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css/proposta_detail.css">
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/proposta_detail.js"></script>
+<script src="/static/js/proposta_volumes.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="modal-overlay">
+  <div class="modal-content">
+
+    <!-- ================= HEADER ================= -->
+    <div class="modal-header-custom">
+      <h2>Proposta #{{ proposta.display_numero }}</h2>
+      <a href="/propostas" class="modal-close">×</a>
+    </div>
+
+    <!-- ================= CANCELAR ================= -->
+    <div class="modal-actions-top">
+      <form method="post" action="/propostas/{{ proposta.id }}/cancelar">
+        <button class="btn btn-danger">Cancelar Proposta</button>
+      </form>
+    </div>
+
+    <!-- ================= STEPS ================= -->
+    <div class="modal-steps">
+      <div class="step {% if proposta.status.value == 'pendente_simulacao' %}active{% endif %}"
+        data-target="sec-simulacao">
+        Simulação
+      </div>
+      <div class="step {% if proposta.status.value == 'pendente_cotacao' %}active{% endif %}" data-target="sec-cotacao">
+        Cotação
+      </div>
+      <div class="step {% if proposta.status.value == 'pendente_envio' %}active{% endif %}" data-target="sec-envio">
+        Envio
+      </div>
+    </div>
+
+    <!-- ================= BODY ================= -->
+    <div class="modal-body">
+
+      <!-- ================= RESUMO ================= -->
+      <div class="box">
+        <h3>Resumo da Proposta</h3>
+
+        <div class="info-grid">
+          <div>
+            <span class="label">Cliente</span>
+            <span class="value">{{ proposta.cliente.nome }}</span>
+          </div>
+
+          {% if proposta.cliente.cidade %}
+          <div>
+            <span class="label">Cidade</span>
+            <span class="value">{{ proposta.cliente.cidade }}</span>
+          </div>
+          {% endif %}
+
+          <div>
+            <span class="label">Vendedor</span>
+            <span class="value">{{ proposta.vendedor.nome }}</span>
+          </div>
+
+          <div>
+            <span class="label">Criado em</span>
+            <span class="value">
+              {{ proposta.criado_em.strftime('%d/%m/%Y %H:%M') }}
+            </span>
+          </div>
+
+          {% if proposta.peso_total_kg %}
+          <div>
+            <span class="label">Peso total</span>
+            <span class="value">{{ proposta.peso_total_kg }} kg</span>
+          </div>
+          {% endif %}
+
+          {% if proposta.cubagem_manual_m3 %}
+          <div>
+            <span class="label">Cubagem (manual)</span>
+            <span class="value">{{ proposta.cubagem_manual_m3 }} m³</span>
+          </div>
+          {% elif proposta.cubagem_m3 %}
+          <div>
+            <span class="label">Cubagem (calculada)</span>
+            <span class="value">{{ proposta.cubagem_m3 }} m³</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- ================= PREVIEW / DOCUMENTO ================= -->
+      <div class="box">
+        <div class="preview-toolbar">
+          <div>
+            <a class="btn-secondary" target="_blank" href="/propostas/{{ proposta.id }}/abrir">Abrir em Nova Aba</a>
+            <button class="btn-secondary" id="btn-print">Imprimir</button>
+          </div>
+          <div class="preview-zoom">🔍 95%</div>
+        </div>
+
+        <div class="proposal-preview" id="proposal-preview">
+          <div class="preview-header">
+            <div class="company">
+              <div class="logo">AM<br>FERRAMENTAS</div>
+              <div class="company-info">
+                <strong>AM FERRAMENTAS IND E COMÉRCIO DE FERRAMENTAS ESPECIAIS LTDA</strong>
+                <div>Rua João Ebel, Nº 79</div>
+                <div>Blumenau, SC</div>
+                <div>Telefone: (47) 99911-7907</div>
+                <div>CNPJ: 23.224.473/0001-78</div>
+              </div>
+            </div>
+
+            <div class="doc-meta">
+              <h4>Proposta Nº {{ proposta.display_numero }}</h4>
+              <table class="meta-table">
+                <tr>
+                  <td>Data</td>
+                  <td>{{ proposta.criado_em.strftime('%d/%m/%Y') }}</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+
+          <div class="proposal-meta">
+            <div class="vendedor-line">Vendedor(a): {{ proposta.vendedor.nome if proposta.vendedor else '' }}</div>
+            <h3 class="items-title">Itens da proposta comercial</h3>
+          </div>
+
+          <div class="preview-client">
+            <div class="client-box">
+              <strong>Para</strong>
+              <div>{{ proposta.cliente.nome }}</div>
+              {% if proposta.cliente.documento %}<div>{{ proposta.cliente.documento }}</div>{% endif %}
+              {% if proposta.cliente.endereco %}<div>{{ proposta.cliente.endereco }}</div>{% endif %}
+              {% if proposta.cliente.cidade %}<div>{{ proposta.cliente.cidade }}</div>{% endif %}
+              {% if proposta.cliente.telefone %}<div>Fone: {{ proposta.cliente.telefone }}</div>{% endif %}
+              {% if proposta.cliente.email %}<div>Email: {{ proposta.cliente.email }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="preview-items">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Imagem</th>
+                  <th>Descrição do produto/serviço</th>
+                  <th>NCM</th>
+                  <th>Código</th>
+                  <th>Un</th>
+                  <th>Qtd.</th>
+                  <th class="num">Preço lista</th>
+                  <th class="num">Desconto %</th>
+                  <th class="num">IPI %</th>
+                  <th class="num">Preço un.</th>
+                  <th class="num">Preço total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in proposta.itens %}
+                <tr>
+                  <td class="img-cell">
+                    {% if item.imagem_url %}
+                    <div class="thumb">
+                      <img src="{{ item.imagem_url }}" alt="img" class="thumb-img"
+                        style="width:48px;height:48px;max-width:48px;max-height:48px;object-fit:contain;display:block;" />
+                    </div>
+                    {% elif item.produto and item.produto.sku %}
+                    <div class="thumb">{{ item.produto.sku[:2] }}</div>
+                    {% else %}
+                    <div class="thumb">—</div>
+                    {% endif %}
+                  </td>
+                  <td class="desc-cell">
+                    <div class="prod-name">{{ item.produto.nome if item.produto else (item.codigo or '') }}</div>
+                    <div class="prod-meta">
+                      <span class="sku">SKU: {{ item.codigo or (item.produto.sku if item.produto else '') }}</span>
+                      <span class="qty">Qtd: {{ item.quantidade or 0 }}</span>
+                      <span class="price">{{ (item.preco_unitario or 0) | money }}</span>
+                    </div>
+                  </td>
+                  <td>{{ item.ncm or '' }}</td>
+                  <td>{{ item.codigo or (item.produto.sku if item.produto else '') }}</td>
+                  <td>UN</td>
+                  <td>{{ item.quantidade }}</td>
+                  <td class="num">{{ ('%.8f' % (item.preco_unitario or 0)).replace('.', ',') }}</td>
+                  <td class="num">{{ ('%.2f' % 0).replace('.', ',') }}</td>
+                  <td class="num">{{ ('%.2f' % 0).replace('.', ',') }}</td>
+                  <td class="num">{{ ('%.8f' % (item.preco_unitario or 0)).replace('.', ',') }}</td>
+                  <td class="num">{{ ((item.preco_total or ((item.preco_unitario or 0) * (item.quantidade or 1))) ) |
+                    round(2) | money_no_symbol }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- debug removed in production preview -->
+      </div>
+
+      <!-- ================= SIMULAÇÃO ================= -->
+      <div class="box" id="sec-simulacao"
+        style="display:{% if proposta.status.value == 'pendente_simulacao' %}block{% else %}none{% endif %};">
+        <h3>Simulação</h3>
+        {% set is_manual = proposta.simulacao and proposta.simulacao.tipo.value == 'manual' %}
+
+        <div class="simulacao-tipo">
+          <span class="tipo-label">Tipo de Simulação:</span>
+          <label class="tipo-option">
+            <input type="radio" name="tipo_simulacao" value="volumes" {% if not is_manual %}checked{% endif %}>
+            <span class="icon">📦</span>
+            <span>Por Volumes</span>
+          </label>
+          <label class="tipo-option">
+            <input type="radio" name="tipo_simulacao" value="manual" {% if is_manual %}checked{% endif %}>
+            <span class="icon">📝</span>
+            <span>Manual</span>
+          </label>
+        </div>
+
+        <!-- ===== POR VOLUMES ===== -->
+        <div class="box-sub" id="simulacao-volumes-section"
+          style="display:{% if is_manual %}none{% else %}block{% endif %};">
+          <h4>Simulação por Volumes (Caixas)</h4>
+
+          <div
+            style="background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px;">
+            <strong>⚠️ Atenção:</strong> Você deve selecionar pelo menos uma caixa ou preencher dimensões manualmente
+            antes de clicar em "Simulação Concluída".
+          </div>
+
+          <form method="post" action="/propostas/{{ proposta.id }}/simulacao-volumes" id="form-volumes">
+            <div id="volumes-list">
+              <div class="volume-item">
+                <div class="volume-header">Volume 1</div>
+                <div class="volume-row">
+                  <label>Selecionar Caixa</label>
+                  <select name="volume_select[0]" class="select-caixa">
+                    <option value="">-- escolha --</option>
+                    <option value="manual">Preencher manualmente</option>
+                    {% for caixa in caixas %}
+                    <option value="{{ caixa.id }}">{{ caixa.nome }} ({{ caixa.comprimento_cm }}x{{ caixa.largura_cm
+                      }}x{{ caixa.altura_cm }} cm)</option>
+                    {% endfor %}
+                  </select>
+
+                  <label>Quantidade</label>
+                  <input type="number" min="1" name="volume_qtd[0]" value="1">
+
+                  <label>Peso (kg)</label>
+                  <input type="number" step="0.01" name="volume_peso[0]" value="0">
+                </div>
+
+                <div class="volume-manual" style="display:none;">
+                  <div class="grid-medidas">
+                    <input name="manual_volumes[0][comprimento]" placeholder="Comprimento (cm)">
+                    <input name="manual_volumes[0][largura]" placeholder="Largura (cm)">
+                    <input name="manual_volumes[0][altura]" placeholder="Altura (cm)">
+                    <input name="manual_volumes[0][quantidade]" placeholder="Quantidade" value="1">
+                  </div>
+                </div>
+
+                <div class="volume-actions">
+                  <button type="button" class="btn-secondary remove-volume" style="display:none;">Remover</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button type="button" id="add-volume" class="btn-secondary">+ Adicionar Volume</button>
+            </div>
+
+            <p class="muted" style="font-size: 12px; margin-top: 8px;">Esta simulação será salva e reutilizada
+              automaticamente para pedidos com os mesmos produtos.</p>
+
+            <div class="actions">
+              <button type="submit" class="btn-secondary">Salvar</button>
+              <button type="submit" name="action" value="concluir" class="btn-primary">Simulação Concluída</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ===== MANUAL TEXTO ===== -->
+        <div class="box-sub" id="simulacao-manual-section"
+          style="display:{% if is_manual %}block{% else %}none{% endif %};">
+          <h4>Simulação Manual</h4>
+          <form method="post" action="/propostas/{{ proposta.id }}/simulacao-manual">
+            <textarea name="simulacao_texto" rows="8"
+              placeholder="Descreva aqui a simulação completa com volumes, pesos, dimensões e outras informações relevantes...">{{ (proposta.simulacao.descricao if proposta.simulacao else '') or '' }}</textarea>
+            <p class="muted" style="font-size: 12px; margin-top: 8px;">Esta simulação será salva e reutilizada
+              automaticamente para pedidos com os mesmos produtos.</p>
+            <div class="actions">
+              <button type="submit" class="btn-secondary">Salvar</button>
+              <button type="submit" name="action" value="concluir" class="btn-primary">Simulação Concluída</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ================= COTAÇÃO ================= -->
+      <div class="box" id="sec-cotacao"
+        style="display:{% if proposta.status.value == 'pendente_cotacao' %}block{% else %}none{% endif %};">
+        <h3>Cotação de Frete</h3>
+
+        <!-- Resumo da Simulação -->
+        <div
+          style="background: #f3f4f6; border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">📦 Resumo da Simulação</h4>
+          {% if proposta.simulacao %}
+          <pre
+            style="margin: 0; white-space: pre-wrap; font-size: 13px; color: #374151;">{{ proposta.simulacao.descricao }}</pre>
+          {% endif %}
+
+          <div
+            style="margin-top: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px;">
+            {% if proposta.cubagem_final_m3() %}
+            <div>
+              <strong>Cubagem:</strong> {{ '%.4f' % proposta.cubagem_final_m3() }} m³
+            </div>
+            {% endif %}
+            {% if proposta.peso_total_kg %}
+            <div>
+              <strong>Peso Total:</strong> {{ proposta.peso_total_kg }} kg
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <form method="post" action="/propostas/{{ proposta.id }}/cotacao">
+          <div id="cotacoes-list">
+            <!-- Cotação 1 -->
+            <div class="cotacao-item"
+              style="background: #fafafa; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+              <h4 style="margin: 0 0 8px 0; font-size: 14px;">Cotação 1</h4>
+              <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+                <div>
+                  <label>Transportadora</label>
+                  <select name="transportadora_id[0]" required>
+                    <option value="">-- Selecione --</option>
+                    {% for t in transportadoras %}
+                    <option value="{{ t.id }}">{{ t.nome }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label>Valor (R$)</label>
+                  <input type="number" step="0.01" name="preco[0]" required>
+                </div>
+                <div>
+                  <label>Prazo (dias)</label>
+                  <input type="number" name="prazo_dias[0]" required>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cotação 2 -->
+            <div class="cotacao-item"
+              style="background: #fafafa; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+              <h4 style="margin: 0 0 8px 0; font-size: 14px;">Cotação 2</h4>
+              <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+                <div>
+                  <label>Transportadora</label>
+                  <select name="transportadora_id[1]">
+                    <option value="">-- Selecione --</option>
+                    {% for t in transportadoras %}
+                    <option value="{{ t.id }}">{{ t.nome }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label>Valor (R$)</label>
+                  <input type="number" step="0.01" name="preco[1]">
+                </div>
+                <div>
+                  <label>Prazo (dias)</label>
+                  <input type="number" name="prazo_dias[1]">
+                </div>
+              </div>
+            </div>
+
+            <!-- Cotação 3 -->
+            <div class="cotacao-item"
+              style="background: #fafafa; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+              <h4 style="margin: 0 0 8px 0; font-size: 14px;">Cotação 3</h4>
+              <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+                <div>
+                  <label>Transportadora</label>
+                  <select name="transportadora_id[2]">
+                    <option value="">-- Selecione --</option>
+                    {% for t in transportadoras %}
+                    <option value="{{ t.id }}">{{ t.nome }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label>Valor (R$)</label>
+                  <input type="number" step="0.01" name="preco[2]">
+                </div>
+                <div>
+                  <label>Prazo (dias)</label>
+                  <input type="number" name="prazo_dias[2]">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn-secondary">Salvar Cotações</button>
+            <button type="submit" name="action" value="concluir" class="btn-primary">Cotação Concluída</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ================= ENVIO ================= -->
+      <div class="box" id="sec-envio"
+        style="display:{% if proposta.status.value == 'pendente_envio' %}block{% else %}none{% endif %};">
+        <h3>Envio ao Cliente</h3>
+
+        <!-- Resumo da Simulação -->
+        <div
+          style="background: #f3f4f6; border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">📦 Simulação</h4>
+          {% if proposta.simulacao %}
+          <pre
+            style="margin: 0; white-space: pre-wrap; font-size: 13px; color: #374151;">{{ proposta.simulacao.descricao }}</pre>
+          {% endif %}
+        </div>
+
+        <!-- Cotações -->
+        <div
+          style="background: #f3f4f6; border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">🚚 Cotações de Frete</h4>
+          {% for c in proposta.cotacoes %}
+          <div style="padding: 8px; background: white; border-radius: 4px; margin-bottom: 8px; font-size: 13px;">
+            <strong>{{ c.transportadora.nome }}</strong> –
+            R$ {{ '%.2f' % c.preco }} –
+            {{ c.prazo_dias }} dias úteis
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Resumo para envio -->
+        <div
+          style="background: #eff6ff; border: 1px solid #3b82f6; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">📋 Resumo para Envio</h4>
+          <div style="font-size: 13px; color: #1e3a8a;">
+            {% for c in proposta.cotacoes %}
+            {{ c.transportadora.nome }} - R$ {{ '%.2f' % c.preco }} - {{ c.prazo_dias }} dias úteis{% if not loop.last
+            %}<br>{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Ações de Envio -->
+        <h4 style="font-size: 14px; margin-bottom: 8px;">Enviar para Cliente</h4>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <a class="btn-secondary" target="_blank"
+            style="flex: 1; text-align: center; padding: 10px; text-decoration: none; display: inline-block;"
+            href="https://wa.me/{{ proposta.cliente.telefone.replace('(','').replace(')','').replace(' ','').replace('-','') if proposta.cliente.telefone else '' }}?text=Olá! Seu orçamento está pronto.">
+            WhatsApp
+          </a>
+        </div>
+
+        <form method="post" action="/propostas/{{ proposta.id }}/envio">
+          <div class="actions">
+            <button type="submit" class="btn-primary" style="width: 100%;">✓ Confirmar Envio</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}

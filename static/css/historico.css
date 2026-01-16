@@ -1,0 +1,37 @@
+.historico-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,.08);
+}
+
+.historico-table th,
+.historico-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  font-size: 14px;
+}
+
+.historico-table th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+.historico-table tr:hover {
+  background: #f3f4f6;
+}
+
+.status {
+  font-weight: 600;
+}
+
+.status.concluida {
+  color: #059669;
+}
+
+.status.cancelada {
+  color: #dc2626;
+}

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}FluxoLand{% endblock %}</title>
+
+  <link rel="stylesheet" href="/static/css/base.css">
+  {% block css %}{% endblock %}
+</head>
+
+<body>
+
+  <header class="topbar">
+    <div class="logo">FluxoLand</div>
+
+    {% if request.session.get("user_id") %}
+    <nav>
+      <a href="/propostas">Propostas</a>
+      <a href="/transportadoras">Transportadoras</a>
+      <a href="/caixas">Caixas</a>
+      <a href="/simulacoes">Simulações</a>
+      <a href="/logout">Sair</a>
+    </nav>
+    {% endif %}
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  </main>
+
+  {% block scripts %}{% endblock %}
+
+</body>
+
+</html>

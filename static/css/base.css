@@ -1,0 +1,94 @@
+/* ---------- BASE GLOBAL ---------- */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f5f6fb;
+}
+
+/* ---------- TOPO ---------- */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: #101827;
+  color: #fff;
+}
+
+.topbar a {
+  color: #e5e7eb;
+  margin-left: 16px;
+  text-decoration: none;
+}
+
+/* ---------- CONTAINER ---------- */
+.container {
+  padding: 24px;
+}
+
+/* ---------- CARD GENÉRICO ---------- */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.06);
+}
+
+/* ---------- FORM GLOBAL ---------- */
+input,
+select,
+textarea,
+button {
+  width: 100%;
+  padding: 8px 10px;
+  margin: 6px 0 14px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+button {
+  background: #111827;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1f2937;
+}
+
+/* ---------- BOTÃO PRINCIPAL ---------- */
+.btn-primary {
+  background: #2563eb;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: #1e40af;
+}
+
+/* ---------- TABS ---------- */
+.tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 8px 14px;
+  background: #e5e7eb;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #111827;
+  font-weight: 500;
+}
+
+.tab.active {
+  background: #111827;
+  color: #fff;
+}

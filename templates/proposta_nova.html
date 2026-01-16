@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Importar Proposta{% endblock %}
+
+{% block content %}
+
+<div class="box">
+  <h1>Importar Proposta do Bling</h1>
+
+  <p class="muted">
+    Cole abaixo o link público da proposta do Bling
+    (<strong>doc.view.php</strong>).
+  </p>
+
+  <form method="post" action="/propostas/nova" class="form">
+
+    <label>Link da proposta (Bling)</label>
+    <input
+      type="url"
+      name="link_bling"
+      placeholder="https://www.bling.com.br/relatorios/doc.view.php?id=..."
+      required
+    >
+
+    <div class="actions">
+      <button type="submit" class="btn-primary">
+        Importar Proposta
+      </button>
+
+      <a href="/propostas" class="btn-link">
+        Cancelar
+      </a>
+    </div>
+
+  </form>
+</div>
+
+{% endblock %}
