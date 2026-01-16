@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 from auth import router as auth_router
 from routers import propostas, transportadoras, bling_import, caixas, simulacoes
-from database import Base, engine
+from database import Base, engine, SessionLocal
 from templates import templates
 import models
 
