@@ -28,6 +28,27 @@ app = FastAPI(title="FluxoLand")
 # ----------------------------------
 Base.metadata.create_all(bind=engine)
 
+# Criar usuário admin padrão se não existir nenhum
+from models import User
+from auth import get_password_hash
+db = SessionLocal()
+try:
+    if db.query(User).count() == 0:
+        admin_user = User(
+            nome="SAC AM Ferramentas",
+            email="sac@amferramentas.com.br",
+            senha_hash=get_password_hash("AmF123"),
+            role="lider"
+        )
+        db.add(admin_user)
+        db.commit()
+        print("✅ Usuário admin padrão criado: sac@amferramentas.com.br / AmF123")
+except Exception as e:
+    print(f"⚠️ Erro ao criar usuário admin: {e}")
+    db.rollback()
+finally:
+    db.close()
+
 # ----------------------------------
 # SESSÃO
 # ----------------------------------
