@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Form, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_303_SEE_OTHER
@@ -26,7 +26,7 @@ def create_admin(
     nome: str = Form(...),
     email: str = Form(...),
     senha: str = Form(...),
-    db: Session = next(get_db())
+    db: Session = Depends(get_db)
 ):
     """Criar primeiro usuário admin - REMOVER APÓS USO"""
     
