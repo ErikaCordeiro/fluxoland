@@ -4,6 +4,7 @@ jinja2
 python-multipart
 sqlalchemy
 passlib[bcrypt]
+bcrypt==4.1.2
 python-dotenv
 itsdangerous
 requests
