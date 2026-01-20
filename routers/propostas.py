@@ -693,6 +693,7 @@ async def salvar_cotacao(
         transportadora_id = form.get(f"transportadora_id[{index}]")
         preco_str = form.get(f"preco[{index}]")
         prazo_str = form.get(f"prazo_dias[{index}]")
+        numero_cotacao = form.get(f"numero_cotacao[{index}]", "").strip() or None
 
         # Validar se campos estão preenchidos
         if transportadora_id and preco_str and prazo_str:
@@ -707,6 +708,7 @@ async def salvar_cotacao(
                         transportadora_id=transportadora_id,
                         preco=preco,
                         prazo_dias=prazo_dias,
+                        numero_cotacao=numero_cotacao,
                     )
                 )
                 cotacoes_criadas += 1

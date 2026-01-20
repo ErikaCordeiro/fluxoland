@@ -3,7 +3,7 @@
 {% block title %}Proposta #{{ proposta.display_numero }}{% endblock %}
 
 {% block css %}
-<link rel="stylesheet" href="/static/css/proposta_detail.css">
+  <link rel="stylesheet" href="/static/css/proposta_detail.css?v=9.0">
 {% endblock %}
 
 {% block scripts %}
@@ -97,7 +97,7 @@
       </div>
 
       <!-- ================= PREVIEW / DOCUMENTO ================= -->
-      <div class="box">
+      <div class="box preview-box" id="preview-box">
         <div class="preview-toolbar">
           <div>
             <a class="btn-secondary" target="_blank" href="/propostas/{{ proposta.id }}/abrir">Abrir em Nova Aba</a>
@@ -170,8 +170,7 @@
                   <td class="img-cell">
                     {% if item.imagem_url %}
                     <div class="thumb">
-                      <img src="{{ item.imagem_url }}" alt="img" class="thumb-img"
-                        style="width:48px;height:48px;max-width:48px;max-height:48px;object-fit:contain;display:block;" />
+                      <img src="{{ item.imagem_url }}" alt="img" class="thumb-img" />
                     </div>
                     {% elif item.produto and item.produto.sku %}
                     <div class="thumb">{{ item.produto.sku[:2] }}</div>
@@ -201,10 +200,47 @@
                 {% endfor %}
               </tbody>
             </table>
+
+            <!-- Tabela de Totais -->
+            <table class="totals-table" style="margin-top: 16px; width: 100%; font-size: 11px;">
+              <thead>
+                <tr>
+                  <th style="background: #f3f4f6; padding: 8px; border: 1px solid #d1d5db;">Nº de itens</th>
+                  <th style="background: #f3f4f6; padding: 8px; border: 1px solid #d1d5db;">Soma das Qtdes</th>
+                  <th style="background: #f3f4f6; padding: 8px; border: 1px solid #d1d5db;">Total outros itens</th>
+                  <th style="background: #f3f4f6; padding: 8px; border: 1px solid #d1d5db;">Desconto total dos itens
+                  </th>
+                  <th style="background: #f3f4f6; padding: 8px; border: 1px solid #d1d5db;">Total dos itens</th>
+                  <th style="background: #f3f4f6; padding: 8px; border: 1px solid #d1d5db;">Desconto</th>
+                  <th style="background: #f3f4f6; padding: 8px; border: 1px solid #d1d5db;">Frete</th>
+                  <th style="background: #f3f4f6; padding: 8px; border: 1px solid #d1d5db; font-weight: 700;">Total da
+                    proposta</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: center;">{{ proposta.itens|length }}
+                  </td>
+                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: center;">{{
+                    proposta.itens|sum(attribute='quantidade') }}</td>
+                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{{
+                    '%.2f'|format(0)|replace('.', ',') }}</td>
+                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{{
+                    '%.2f'|format(0)|replace('.', ',') }}</td>
+                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{{ proposta.valor_total |
+                    money_no_symbol }}</td>
+                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{{
+                    '%.2f'|format(0)|replace('.', ',') }}</td>
+                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{{
+                    '%.2f'|format(0)|replace('.', ',') }}</td>
+                  <td
+                    style="padding: 8px; border: 1px solid #d1d5db; text-align: right; font-weight: 700; background: #f9fafb;">
+                    {{ proposta.valor_total | money_no_symbol }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-
-        <!-- debug removed in production preview -->
       </div>
 
       <!-- ================= SIMULAÇÃO ================= -->
@@ -341,24 +377,32 @@
             <div class="cotacao-item"
               style="background: #fafafa; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
               <h4 style="margin: 0 0 8px 0; font-size: 14px;">Cotação 1</h4>
+              {% set cot0 = proposta.cotacoes[0] if proposta.cotacoes|length > 0 else None %}
               <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
                 <div>
-                  <label>Transportadora</label>
+                  <label>Transportadora <span style="color: #dc2626;">*</span>{% if cot0 %} <span
+                      style="color: #10b981; font-size: 11px;">✓ Selecionada</span>{% endif %}</label>
                   <select name="transportadora_id[0]" required>
                     <option value="">-- Selecione --</option>
                     {% for t in transportadoras %}
-                    <option value="{{ t.id }}">{{ t.nome }}</option>
+                    <option value="{{ t.id }}" {% if cot0 and cot0.transportadora_id==t.id %}selected{% endif %}>{{
+                      t.nome }}</option>
                     {% endfor %}
                   </select>
                 </div>
                 <div>
                   <label>Valor (R$)</label>
-                  <input type="number" step="0.01" name="preco[0]" required>
+                  <input type="number" step="0.01" name="preco[0]" value="{{ cot0.preco if cot0 else '' }}" required>
                 </div>
                 <div>
-                  <label>Prazo (dias)</label>
-                  <input type="number" name="prazo_dias[0]" required>
+                  <label>Prazo (dias úteis)</label>
+                  <input type="number" name="prazo_dias[0]" value="{{ cot0.prazo_dias if cot0 else '' }}" required>
                 </div>
+              </div>
+              <div style="margin-top: 12px;">
+                <label>Número da Cotação <span style="font-size: 11px; color: #6b7280;">#</span></label>
+                <input type="text" name="numero_cotacao[0]" placeholder="Ex: 4C0742B8a2" style="width: 100%;"
+                  value="{{ cot0.numero_cotacao if cot0 and cot0.numero_cotacao else '' }}">
               </div>
             </div>
 
@@ -366,24 +410,32 @@
             <div class="cotacao-item"
               style="background: #fafafa; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
               <h4 style="margin: 0 0 8px 0; font-size: 14px;">Cotação 2</h4>
+              {% set cot1 = proposta.cotacoes[1] if proposta.cotacoes|length > 1 else None %}
               <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
                 <div>
-                  <label>Transportadora</label>
+                  <label>Transportadora{% if cot1 %} <span style="color: #10b981; font-size: 11px;">✓
+                      Selecionada</span>{% endif %}</label>
                   <select name="transportadora_id[1]">
                     <option value="">-- Selecione --</option>
                     {% for t in transportadoras %}
-                    <option value="{{ t.id }}">{{ t.nome }}</option>
+                    <option value="{{ t.id }}" {% if cot1 and cot1.transportadora_id==t.id %}selected{% endif %}>{{
+                      t.nome }}</option>
                     {% endfor %}
                   </select>
                 </div>
                 <div>
                   <label>Valor (R$)</label>
-                  <input type="number" step="0.01" name="preco[1]">
+                  <input type="number" step="0.01" name="preco[1]" value="{{ cot1.preco if cot1 else '' }}">
                 </div>
                 <div>
-                  <label>Prazo (dias)</label>
-                  <input type="number" name="prazo_dias[1]">
+                  <label>Prazo (dias úteis)</label>
+                  <input type="number" name="prazo_dias[1]" value="{{ cot1.prazo_dias if cot1 else '' }}">
                 </div>
+              </div>
+              <div style="margin-top: 12px;">
+                <label>Número da Cotação <span style="font-size: 11px; color: #6b7280;">#</span></label>
+                <input type="text" name="numero_cotacao[1]" placeholder="Ex: 342053679" style="width: 100%;"
+                  value="{{ cot1.numero_cotacao if cot1 and cot1.numero_cotacao else '' }}">
               </div>
             </div>
 
@@ -391,24 +443,32 @@
             <div class="cotacao-item"
               style="background: #fafafa; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
               <h4 style="margin: 0 0 8px 0; font-size: 14px;">Cotação 3</h4>
+              {% set cot2 = proposta.cotacoes[2] if proposta.cotacoes|length > 2 else None %}
               <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
                 <div>
-                  <label>Transportadora</label>
+                  <label>Transportadora{% if cot2 %} <span style="color: #10b981; font-size: 11px;">✓
+                      Selecionada</span>{% endif %}</label>
                   <select name="transportadora_id[2]">
                     <option value="">-- Selecione --</option>
                     {% for t in transportadoras %}
-                    <option value="{{ t.id }}">{{ t.nome }}</option>
+                    <option value="{{ t.id }}" {% if cot2 and cot2.transportadora_id==t.id %}selected{% endif %}>{{
+                      t.nome }}</option>
                     {% endfor %}
                   </select>
                 </div>
                 <div>
                   <label>Valor (R$)</label>
-                  <input type="number" step="0.01" name="preco[2]">
+                  <input type="number" step="0.01" name="preco[2]" value="{{ cot2.preco if cot2 else '' }}">
                 </div>
                 <div>
-                  <label>Prazo (dias)</label>
-                  <input type="number" name="prazo_dias[2]">
+                  <label>Prazo (dias úteis)</label>
+                  <input type="number" name="prazo_dias[2]" value="{{ cot2.prazo_dias if cot2 else '' }}">
                 </div>
+              </div>
+              <div style="margin-top: 12px;">
+                <label>Número da Cotação <span style="font-size: 11px; color: #6b7280;">#</span></label>
+                <input type="text" name="numero_cotacao[2]" placeholder="Ex: ABC123" style="width: 100%;"
+                  value="{{ cot2.numero_cotacao if cot2 and cot2.numero_cotacao else '' }}">
               </div>
             </div>
           </div>
@@ -444,6 +504,9 @@
             <strong>{{ c.transportadora.nome }}</strong> –
             R$ {{ '%.2f' % c.preco }} –
             {{ c.prazo_dias }} dias úteis
+            {% if c.numero_cotacao %}
+            <span style="color: #6b7280; font-size: 11px;">(#{{ c.numero_cotacao }})</span>
+            {% endif %}
           </div>
           {% endfor %}
         </div>
@@ -454,7 +517,8 @@
           <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">📋 Resumo para Envio</h4>
           <div style="font-size: 13px; color: #1e3a8a;">
             {% for c in proposta.cotacoes %}
-            {{ c.transportadora.nome }} - R$ {{ '%.2f' % c.preco }} - {{ c.prazo_dias }} dias úteis{% if not loop.last
+            {{ c.transportadora.nome }} - R$ {{ '%.2f' % c.preco }} - {{ c.prazo_dias }} dias úteis{% if
+            c.numero_cotacao %} (#{{ c.numero_cotacao }}){% endif %}{% if not loop.last
             %}<br>{% endif %}
             {% endfor %}
           </div>

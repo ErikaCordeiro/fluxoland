@@ -311,6 +311,7 @@ class CotacaoFrete(Base):
     proposta_id = Column(Integer, ForeignKey("propostas.id"), nullable=False)
     transportadora_id = Column(Integer, ForeignKey("transportadoras.id"), nullable=False)
 
+    numero_cotacao = Column(String, nullable=True)
     preco = Column(Float, nullable=False)
     prazo_dias = Column(Integer, nullable=False)
 

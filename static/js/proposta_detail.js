@@ -1,58 +1,39 @@
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("✓ proposta_detail.js carregado");
-
   const steps = document.querySelectorAll(".step");
-  console.log("✓ Steps encontrados:", steps.length);
-
   const sections = {
     "sec-simulacao": document.getElementById("sec-simulacao"),
     "sec-cotacao": document.getElementById("sec-cotacao"),
     "sec-envio": document.getElementById("sec-envio")
   };
 
-  console.log("✓ Seções encontradas:", Object.keys(sections));
-
   function showSection(sectionId) {
-    console.log("🎯 Mostrando seção:", sectionId);
-
-    // Esconde todas as seções
     Object.entries(sections).forEach(([id, section]) => {
-      if (section) {
-        section.style.display = "none";
-        console.log(`  → Ocultando ${id}`);
-      }
+      if (section) section.style.display = "none";
     });
 
-    // Mostra apenas a seção selecionada
     const section = sections[sectionId];
-    if (section) {
-      section.style.display = "block";
-      console.log(`  → Mostrando ${sectionId}`);
+    if (section) section.style.display = "block";
+
+    const previewBox = document.getElementById("preview-box");
+    if (previewBox) {
+      previewBox.style.display = sectionId === "sec-envio" ? "none" : "block";
     }
   }
 
   function setActive(step) {
     steps.forEach(s => s.classList.remove("active"));
     step.classList.add("active");
-    console.log("✓ Step marcado como active:", step.dataset.target);
   }
 
-  // Clique nos steps - comportamento de tabs
-  steps.forEach((step, index) => {
-    console.log(`  Adicionando listener ao step ${index}: ${step.dataset.target}`);
-
+  steps.forEach((step) => {
     step.addEventListener("click", (e) => {
-      console.log("🖱️ Click no step:", step.dataset.target);
       e.preventDefault();
       e.stopPropagation();
-
-      const sectionId = step.dataset.target;
       setActive(step);
-      showSection(sectionId);
+      showSection(step.dataset.target);
     });
   });
 
-  // Impressão do preview
   const btnPrint = document.getElementById('btn-print');
   if (btnPrint) {
     btnPrint.addEventListener('click', () => {
@@ -60,7 +41,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!preview) return;
       const w = window.open('', '_blank');
       w.document.write('<html><head><title>Proposta</title>');
-      // include minimal styles
       const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(l => l.href);
       styles.forEach(h => w.document.write(`<link rel="stylesheet" href="${h}">`));
       w.document.write('</head><body>');
@@ -70,5 +50,19 @@ document.addEventListener("DOMContentLoaded", () => {
       w.print();
     });
   }
+
+  const modalOverlay = document.querySelector('.modal-overlay');
+  if (modalOverlay) {
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) {
+        window.location.href = '/propostas';
+      }
+    });
+  }
+
+  const activeStep = document.querySelector('.step.active');
+  if (activeStep && activeStep.dataset.target === 'sec-envio') {
+    const previewBox = document.getElementById('preview-box');
+    if (previewBox) previewBox.style.display = 'none';
 });
 
