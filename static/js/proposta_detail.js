@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   console.log("✓ proposta_detail.js carregado");
-  
+
   const steps = document.querySelectorAll(".step");
   console.log("✓ Steps encontrados:", steps.length);
 
@@ -9,12 +9,12 @@ document.addEventListener("DOMContentLoaded", () => {
     "sec-cotacao": document.getElementById("sec-cotacao"),
     "sec-envio": document.getElementById("sec-envio")
   };
-  
+
   console.log("✓ Seções encontradas:", Object.keys(sections));
 
   function showSection(sectionId) {
     console.log("🎯 Mostrando seção:", sectionId);
-    
+
     // Esconde todas as seções
     Object.entries(sections).forEach(([id, section]) => {
       if (section) {
@@ -40,12 +40,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // Clique nos steps - comportamento de tabs
   steps.forEach((step, index) => {
     console.log(`  Adicionando listener ao step ${index}: ${step.dataset.target}`);
-    
+
     step.addEventListener("click", (e) => {
       console.log("🖱️ Click no step:", step.dataset.target);
       e.preventDefault();
       e.stopPropagation();
-      
+
       const sectionId = step.dataset.target;
       setActive(step);
       showSection(sectionId);

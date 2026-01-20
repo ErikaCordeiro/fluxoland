@@ -3,31 +3,38 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}FluxoLand{% endblock %}</title>
 
-  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/base.css?v=2.0">
   {% block css %}{% endblock %}
 </head>
 
 <body>
 
   <header class="topbar">
-    <div class="logo">FluxoLand</div>
+    <div class="topbar-left">
+      <a href="/propostas" class="topbar-logo">FluxoLand</a>
+
+      {% if request.session.get("user_id") %}
+      <nav style="display: flex; gap: 4px;">
+        <a href="/propostas">Propostas</a>
+        <a href="/transportadoras">Transportadoras</a>
+        <a href="/caixas">Caixas</a>
+        <a href="/simulacoes">Simulações</a>
+      </nav>
+      {% endif %}
+    </div>
 
     {% if request.session.get("user_id") %}
-    <nav>
-      <a href="/propostas">Propostas</a>
-      <a href="/transportadoras">Transportadoras</a>
-      <a href="/caixas">Caixas</a>
-      <a href="/simulacoes">Simulações</a>
+    <div>
       <a href="/logout">Sair</a>
-    </nav>
+    </div>
     {% endif %}
   </header>
 
   <main class="container">
     {% block content %}{% endblock %}
-  </main>
   </main>
 
   {% block scripts %}{% endblock %}

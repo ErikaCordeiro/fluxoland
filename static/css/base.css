@@ -1,8 +1,14 @@
 /* ---------- BASE GLOBAL ---------- */
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f5f6fb;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif;
+  background: #f8f9fa;
+  color: #1a1a1a;
+  line-height: 1.5;
 }
 
 /* ---------- TOPO ---------- */
@@ -10,85 +16,183 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 24px;
-  background: #101827;
+  padding: 0 32px;
+  height: 60px;
+  background: #1a1a1a;
   color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.topbar-logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: #FF8C00;
+  text-decoration: none;
+  letter-spacing: -0.5px;
+}
+
+.topbar nav {
+  display: flex;
+  gap: 4px;
 }
 
 .topbar a {
-  color: #e5e7eb;
-  margin-left: 16px;
+  color: #d1d5db;
   text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.topbar a:hover {
+  background: rgba(255, 140, 0, 0.15);
+  color: #FF8C00;
 }
 
 /* ---------- CONTAINER ---------- */
 .container {
-  padding: 24px;
+  padding: 32px;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+/* ---------- TÍTULOS ---------- */
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 24px 0;
+  letter-spacing: -0.5px;
 }
 
 /* ---------- CARD GENÉRICO ---------- */
 .card {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 24px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+  border: 1px solid #e5e7eb;
 }
 
 /* ---------- FORM GLOBAL ---------- */
+label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
 input,
 select,
-textarea,
-button {
+textarea {
   width: 100%;
-  padding: 8px 10px;
-  margin: 6px 0 14px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
+  padding: 11px 14px;
+  margin-bottom: 18px;
+  border-radius: 8px;
+  border: 1.5px solid #d1d5db;
   font-size: 14px;
+  background: #fff;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #FF8C00;
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.08);
+}
+
+input::placeholder {
+  color: #9ca3af;
 }
 
 button {
-  background: #111827;
-  color: #fff;
+  width: 100%;
+  padding: 12px 18px;
+  margin: 6px 0 14px;
+  border-radius: 8px;
   border: none;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
+  background: #FF8C00;
+  color: #fff;
+  font-family: inherit;
+  transition: all 0.15s ease;
 }
 
 button:hover {
-  background: #1f2937;
+  background: #E67E00;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 140, 0, 0.2);
+}
+
+button:active {
+  transform: translateY(0);
 }
 
 /* ---------- BOTÃO PRINCIPAL ---------- */
 .btn-primary {
-  background: #2563eb;
+  background: #FF8C00;
   color: #fff;
-  padding: 10px 14px;
-  border-radius: 6px;
+  padding: 11px 20px;
+  border-radius: 8px;
   text-decoration: none;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  border: none;
 }
 
 .btn-primary:hover {
-  background: #1e40af;
+  background: #E67E00;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 140, 0, 0.2);
 }
 
 /* ---------- TABS ---------- */
 .tabs {
   display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0;
 }
 
 .tab {
-  padding: 8px 14px;
-  background: #e5e7eb;
-  border-radius: 6px;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
   text-decoration: none;
-  color: #111827;
-  font-weight: 500;
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  margin-bottom: -2px;
+}
+
+.tab:hover {
+  color: #FF8C00;
+  border-bottom-color: #FFB347;
 }
 
 .tab.active {
-  background: #111827;
-  color: #fff;
+  color: #FF8C00;
+  border-bottom-color: #FF8C00;
+  background: transparent;
 }

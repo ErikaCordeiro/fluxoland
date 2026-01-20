@@ -1,108 +1,108 @@
 # Copilot / Agentes: instruções específicas do projeto FluxoLand
 
-**Objetivo:** Contexto sucinto para agentes entenderem rapidamente arquitetura, padrões, fluxos de dados e convenções específicas do FluxoLand.
+Objetivo: fornecer contexto sucinto para agentes automatizados entenderem rapidamente arquitetura, padrões e comandos de desenvolvedor neste repositório.
 
-## Visão Geral da Arquitetura
+- **Visão geral:** aplicação web FastAPI pequena que usa SQLAlchemy (PostgreSQL), templates Jinja2 e rotas organizadas em `routers/` e lógica de domínio em `services/`.
 
-**Stack:** FastAPI + SQLAlchemy (SQLite local) + Jinja2 templates + Session middleware para autenticação.
+- **Como rodar localmente (desenvolvimento):**
+  - executar `python main.py` (o bloco `if __name__ == "__main__"` já roda `uvicorn` com `reload=True`).
+  - alternativa: `uvicorn main:app --reload --host 127.0.0.1 --port 8000`.
+  - DB é PostgreSQL (configurado via `DATABASE_URL` no `.env`) e tabelas são criadas automaticamente por `Base.metadata.create_all(bind=engine)` em `main.py`.
 
-**Fluxo canônico:** HTTP Router → Service (regra de negócio) → ORM Model → DB.
+- **Config e segredos:** variáveis via `.env` (carregadas por `python-dotenv` em `main.py` / `database.py`). A sessão usa `SESSION_SECRET_KEY` (ver `main.py`).
 
-**Exemplo fim-a-fim:** `routers/bling_import.py` recebe link do Bling → `BlingParserService` extrai dados → `BlingImportService.importar_proposta_bling()` cria Cliente/Proposta/PropostaProduto com status `pendente_simulacao` → redireciona para `/propostas`.
+- **Padrões arquiteturais e fluxo de dados:**
+  - Rotas HTTP definidas em `routers/` (ex.: `routers/bling_import.py`) que delegam processamento para `services/` (ex.: `services/bling_import_service.py`).
+  - Camada de persistência: `database.py` fornece `SessionLocal`, `get_db()` (dependência FastAPI) e `Base`.
+  - Models com regras/hints ficam em `models.py` (Enums para status e origem, métodos híbridos para cálculos como `valor_total`).
+  - Serviços manipulam transações explicitamente: usam `db.add()`, `db.flush()`, `db.commit()` e `db.refresh()` conforme necessário (ver `services/bling_import_service.py`).
 
-## Modelos e Estados de Proposta
+- **Exemplos concretos a considerar ao modificar código:**
+  - Importação do Bling: `routers/bling_import.py` extrai `id` da query e chama `BlingImportService.importar_proposta_bling(...)` (serviço aplica regras de negócio e cria cliente/proposta/itens).
+  - Estados de proposta: use os Enums em `models.py` (`PropostaStatus`, `PropostaOrigem`) em vez de strings literais.
+  - Evitar duplicidade: muitos serviços primeiro checam existência por campos específicos (ex.: `Proposta.id_bling`) antes de criar.
 
-**Domínio central:** `Proposta` representa uma cotação que passa por estados: `pendente_simulacao` → `pendente_cotacao` → `pendente_envio` → `concluida`|`cancelada`.
+- **Conveniências e convenções do projeto:**
+  - Uso de endpoints que retornam `RedirectResponse` para flows pós-form (ver `auth.py`, `routers/*`).
+  - Templates Jinja2 em `templates/`; estática em `static/` (montada em `/static`).
+  - Senhas: passlib com `bcrypt` (`auth.py`); ver `get_password_hash` e `verify_password`.
+  - Arquitetura simples: controllers (routers) → services → models/DB.
 
-**Enums críticos (sempre use, nunca strings):**
-- `PropostaStatus`: pendente_simulacao, pendente_cotacao, pendente_envio, concluida, cancelada
-- `PropostaOrigem`: manual, BLING
-- `PropostaHistorico` registra cada mudança de status com observação
+- **Arquivos úteis para desenvolvedores/agents:**
+  - inicialização e servidor: `main.py`
+  - DB/ORM: `database.py`, `models.py`
+  - autenticação: `auth.py`, `create_admin.py` (para criar usuário inicial)
+  - integrações: `integrations/bling/*` e `services/bling_import_service.py`
+  - regras de negócio principais: `services/proposta_service.py`, `services/calculo_service.py`, `services/cotacao_frete_service.py`
 
-**Relacionamentos principais:**
-- `Proposta → Cliente` (N:1): muitas propostas por cliente
-- `Proposta → PropostaProduto` (1:N): itens com quantidade, preço_unitario, preco_total
-- `PropostaProduto → Produto` (N:1): referência ao catálogo (sku, medidas para cálculo de volume)
-- `Proposta → Simulacao` (1:1, opcional): tipo (manual|volumes) e descrição
-- `Proposta → CotacaoFrete` (1:N): múltiplas cotações, uma selecionada
-- `Proposta → EnvioProposta` (1:1, opcional): rastreamento de envio
+- **Práticas observáveis (faça isto):**
+  - Reutilize as Enums de `models.py` para consistência.
+  - Preserve transações e chamadas a `db.flush()` quando o código atual as usa para garantir `id`s antes de relacionamentos.
+  - Rotas protegidas usam dependências (ex.: `dependencies.get_current_user_api`) — mantenha esse padrão.
 
-**Métodos híbridos e propriedades:**
-- `Proposta.valor_total`: hybrid_property que soma `preco_total` dos itens
-- `Proposta.cubagem_final_m3()`: retorna cubagem ajustada se `cubagem_ajustada=True`, senão `cubagem_m3`
-- `Proposta.todos_produtos_possuem_medidas()`: valida se itens têm altura, largura, comprimento, peso
+- **O que NÃO assumir:**
+  - Não há migrations (Alembic) configuradas; alterações de esquema podem exigir remoção manual do arquivo `fluxoland.db` em desenvolvimento.
+  - Não há suite de testes automatizados visível; antes de modificar modelos, verifique o impacto manualmente.
 
-## Serviços e Camada de Negócio
+- **Checks rápidos que um agente pode executar automaticamente:**
+  1. Confirmar que `requirements.txt` lista dependências (ex.: `fastapi`, `uvicorn`, `sqlalchemy`, `psycopg2-binary`).
+  2. Validar se `DATABASE_URL` está corretamente configurado no `.env` antes de rodar operações destrutivas.
+  3. Procurar usos diretos de strings para status/origem e sugerir substituição por Enums.
 
-**Padrão:** Cada serviço é uma classe com métodos estáticos que recebem `db: Session`.
+Se algo neste resumo estiver incompleto ou se você quer que eu enfatize outro aspecto (ex.: devops, testes, ou integração com Bling), diga qual seção quer detalhar.
 
-**Serviços principais:**
-- `BlingImportService.importar_proposta_bling()`: cria proposta a partir de dados do Bling (valida duplicidade por `id_bling`)
-- `PropostaService`: criação, mudança de status, histórico
-- `SimulacaoVolumesService`: calcula cubagem a partir de produtos com medidas
-- `CotacaoFreteService`: consulta transportadoras e cria cotações
-- `EnvioService`: finaliza proposta com rastreamento
+## Comandos úteis e snippets
 
-**Transações explícitas:** Serviços usam `db.add()`, `db.flush()` (garante IDs antes de relacionamentos), `db.commit()`, `db.refresh()` conforme necessário. **Não confie em autocommit.**
+- **Rodar em desenvolvimento:**
 
-## Autenticação e Autorização
-
-**Padrão session:** `request.session` armazena `user_id`, `user_nome`, `user_role` após login bem-sucedido.
-
-**Dependências (em `dependencies.py`):**
-- `get_current_user_html()`: para rotas que retornam templates; redireciona para /login se não autenticado
-- `get_current_user_api()`: para endpoints JSON; lança HTTPException 401 se não autenticado
-- `require_lider_html()`: valida role=lider
-- Rotas protegidas usam `Depends(get_current_user_html)` ou `Depends(get_current_user_api)`
-
-**Senhas:** bcrypt via `passlib.context.CryptContext` → `get_password_hash()` e `verify_password()` em `auth.py`.
-
-## Desenvolvimento Local
-
-**Executar:**
 ```bash
-# Opção 1: script principal (já tem uvicorn dentro)
+# modo 1 (script principal que já chama uvicorn)
 python main.py
 
-# Opção 2: uvicorn direto
+# modo 2 (uvicorn direto, recarregamento em dev)
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-**Criar usuário admin:** `python create_admin.py` (interativo: nome, email, senha).
+- **Criar usuário admin (interativo):**
 
-**Criar apenas tabelas:** `python create_tables.py` (sem rodar servidor).
+```bash
+python create_admin.py
+# segue prompts: Nome, Email, Senha
+```
 
-**Limpar DB local:** `Remove-Item .\fluxoland.db -Force` (PowerShell) ou `rm ./fluxoland.db` (Bash).
+- **Criar apenas as tabelas (sem rodar a app):**
 
-**Config `.env`:**
+```bash
+python create_tables.py
+```
+
+- **Arquivo de configuração `.env`:**
+
+  - O projeto usa `python-dotenv`. Valores observáveis:
+    - `SESSION_SECRET_KEY` — secret para `SessionMiddleware` (veja `main.py`).
+    - `DATABASE_URL` — URL de conexão do PostgreSQL (veja `database.py`).
+  - Exemplo mínimo `.env`:
+
 ```
 SESSION_SECRET_KEY=algum-segredo-local
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/fluxoland
 ```
 
-## Padrões Observados
+- **Exemplo de importação do Bling via HTTP (curl):**
 
-1. **Routers** (em `routers/`) delegam a **Services** (em `services/`); Services manipulam DB e regras; Models definem esquema.
-2. **RedirectResponse com HTTP 303** para flows pós-form: `RedirectResponse(url, status_code=HTTP_303_SEE_OTHER)`.
-3. **Jinja2 templates** em `templates/`; arquivos estáticos em `static/` (montado em `/static`).
-4. **ORM joinedload** para eager-loading de relacionamentos em queries (ex.: `joinedload(Proposta.cliente)`).
-5. **Validação de duplicidade** antes de criar (ex.: checar `id_bling` já existe antes de importar).
-6. **Histórico imutável:** `PropostaHistorico` registra cada mudança via `_registrar_historico()`.
+```bash
+curl -X POST \
+  -F "link_bling=https://www.bling.com.br/doc.view.php?id=HASH" \
+  http://127.0.0.1:8000/integracoes/bling/importar/
+```
 
-## Arquivos-Chave
+- **Verificações rápidas antes de rodar tarefas destrutivas:**
+  - Confirme em `database.py` que `DATABASE_URL` aponta para o banco PostgreSQL correto.
+  - Faça backup do banco de dados antes de executar scripts que alterem o esquema.
 
-- `main.py`: inicialização, middlewares, routers
-- `database.py`: engine, SessionLocal, Base, get_db()
-- `models.py`: todas as tabelas e Enums
-- `auth.py`, `dependencies.py`: autenticação e autorização
-- `routers/{propostas,bling_import,transportadoras,caixas}.py`: endpoints HTTP
-- `services/*.py`: lógica de domínio
-- `integrations/bling/`: parsers e clients do Bling
+## Exemplos de padrões (rápido)
 
-## Limitações Conhecidas
-
-- **Sem migrations (Alembic):** mudanças de esquema exigem remover `fluxoland.db` manualmente em dev.
-- **Sem testes automatizados:** valide impacto manualmente antes de alterar modelos.
-- **DB local:** SQLite apenas; `DATABASE_URL = "sqlite:///./fluxoland.db"` em `database.py`.
-
-
+- `routers/*` → delegam para `services/*` (ex.: `routers/bling_import.py` → `services/bling_import_service.py`).
+- Use os `Enum` de `models.py` (`PropostaStatus`, `PropostaOrigem`) em vez de strings literais.
+- Serviços frequentemente usam `db.flush()` para garantir `id`s antes de criar relacionamentos (ver `services/bling_import_service.py`).
 

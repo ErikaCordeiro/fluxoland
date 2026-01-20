@@ -118,8 +118,13 @@ body {
     margin-bottom: 6px;
 }
 
-.num { text-align: right }
-.center { text-align: center }
+.num {
+    text-align: right
+}
+
+.center {
+    text-align: center
+}
 
 .thumb {
     width: 40px;
@@ -154,7 +159,11 @@ body {
     font-size: 11px;
 }
 
-.items-table td, .items-table th { overflow: hidden; word-break: break-word }
+.items-table td,
+.items-table th {
+    overflow: hidden;
+    word-break: break-word
+}
 
 .print-footer {
     margin-top: 12px;

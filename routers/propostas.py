@@ -25,10 +25,8 @@ from models import (
 )
 
 from services.galpao_service import GalpaoService
-from services.envio_service import EnvioService
 from services.bling_parser_service import BlingParserService
 from services.bling_import_service import BlingImportService
-from services.simulacao_volumes_service import SimulacaoVolumesService
 from services.proposta_service import PropostaService
 
 router = APIRouter(prefix="/propostas", tags=["propostas"])
@@ -308,7 +306,7 @@ async def simular_por_volumes(
                 if qtd > 0:
                     caixas_payload.append({"caixa_id": cid, "quantidade": qtd})
             except (TypeError, ValueError):
-                pass
+                continue
 
         index += 1
 
@@ -713,7 +711,7 @@ async def salvar_cotacao(
                 )
                 cotacoes_criadas += 1
             except (TypeError, ValueError):
-                pass
+                continue
 
         index += 1
 

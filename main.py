@@ -1,90 +1,119 @@
-import os
-import uvicorn
+"""FluxoLand - Sistema de Gestão de Propostas e Fretes.
 
+FastAPI application for managing commercial proposals,
+freight calculations, and Bling integration.
+"""
+
+import logging
+import os
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
+import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
-from dotenv import load_dotenv
 
-from auth import router as auth_router
-from routers import propostas, transportadoras, bling_import, caixas, simulacoes
-from database import Base, engine, SessionLocal
+from auth import get_password_hash, router as auth_router
+from database import Base, SessionLocal, engine
+from models import User
+from routers import bling_import, caixas, propostas, simulacoes, transportadoras
 from templates import templates
-import models
 
-# ----------------------------------
-# ENV
-# ----------------------------------
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Load environment variables
 load_dotenv()
 
-# ----------------------------------
-# APP
-# ----------------------------------
-app = FastAPI(title="FluxoLand")
 
-# ----------------------------------
-# BANCO
-# ----------------------------------
-Base.metadata.create_all(bind=engine)
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Application lifespan manager.
+    
+    Handles startup and shutdown events.
+    """
+    # Startup
+    logger.info("Starting FluxoLand application...")
+    
+    # Create database tables
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database tables created/verified")
+    
+    # Create default admin user if needed
+    _create_default_admin()
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down FluxoLand application...")
 
-# Criar usuário admin padrão se não existir nenhum
-from models import User
-from auth import get_password_hash
-db = SessionLocal()
-try:
-    if db.query(User).count() == 0:
-        admin_user = User(
-            nome="SAC AM Ferramentas",
-            email="sac@amferramentas.com.br",
-            senha_hash=get_password_hash("AmF123"),
-            role="lider"
-        )
-        db.add(admin_user)
-        db.commit()
-        print("✅ Usuário admin padrão criado: sac@amferramentas.com.br / AmF123")
-except Exception as e:
-    print(f"⚠️ Erro ao criar usuário admin: {e}")
-    db.rollback()
-finally:
-    db.close()
 
-# ----------------------------------
-# SESSÃO
-# ----------------------------------
+def _create_default_admin() -> None:
+    """Create default admin user if no users exist."""
+    db = SessionLocal()
+    try:
+        if db.query(User).count() == 0:
+            admin_user = User(
+                nome="SAC AM Ferramentas",
+                email="sac@amferramentas.com.br",
+                senha_hash=get_password_hash("AmF123"),
+                role="lider"
+            )
+            db.add(admin_user)
+            db.commit()
+            logger.info(
+                "Default admin user created: sac@amferramentas.com.br / AmF123"
+            )
+    except Exception as e:
+        logger.error(f"Error creating default admin user: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+# Create FastAPI application
+app = FastAPI(
+    title="FluxoLand",
+    description="Sistema de Gestão de Propostas e Fretes",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# Add session middleware
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET_KEY", "dev-secret-key"),
 )
 
-# ----------------------------------
-# STATIC E TEMPLATES
-# ----------------------------------
+# Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
-from templates import templates
 
-# ----------------------------------
-# ROTA HOME (CORRIGIDA)
-# ----------------------------------
-@app.get("/")
-def home(request: Request):
+
+# Root route
+@app.get("/", tags=["navigation"])
+async def home(request: Request) -> RedirectResponse:
+    """Redirect to login or propostas based on authentication status."""
     if request.session.get("user_id"):
-        return RedirectResponse("/propostas")
-    return RedirectResponse("/login")
+        return RedirectResponse(url="/propostas", status_code=302)
+    return RedirectResponse(url="/login", status_code=302)
 
-# ----------------------------------
-# ROUTERS
-# ----------------------------------
-app.include_router(auth_router)             # /login /logout
-app.include_router(propostas.router)        # /propostas
-app.include_router(transportadoras.router)  # /transportadoras
-app.include_router(bling_import.router)     # /integracoes/bling/importar
-app.include_router(caixas.router)           # /caixas
-app.include_router(simulacoes.router)       # /simulacoes
 
-# ----------------------------------
-# RUN LOCAL
-# ----------------------------------
+# Include routers
+app.include_router(auth_router, tags=["authentication"])
+app.include_router(propostas.router, tags=["propostas"])
+app.include_router(transportadoras.router, tags=["transportadoras"])
+app.include_router(bling_import.router, tags=["integrations"])
+app.include_router(caixas.router, tags=["caixas"])
+app.include_router(simulacoes.router, tags=["simulacoes"])
+
+
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",

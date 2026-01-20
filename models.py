@@ -220,12 +220,11 @@ class Proposta(Base):
     def display_numero(self) -> str:
         """Retorna o número da proposta para exibição (número do Bling se disponível, senão ID interno)"""
         if self.observacao_importacao and "bling_numero:" in self.observacao_importacao:
-            # Extrai o número do Bling da observação
             try:
                 numero_parte = self.observacao_importacao.split("bling_numero:")[1].split(";")[0].strip()
                 return numero_parte
-            except:
-                pass
+            except IndexError:
+                return str(self.id)
         return str(self.id)
     
     @property
@@ -235,8 +234,8 @@ class Proposta(Base):
             try:
                 vendedor_parte = self.observacao_importacao.split("bling_vendedor:")[1].split(";")[0].strip()
                 return vendedor_parte
-            except:
-                pass
+            except IndexError:
+                return None
         return None
 
 

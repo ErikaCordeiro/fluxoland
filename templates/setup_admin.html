@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Admin - FluxoLand</title>
+    <link rel="stylesheet" href="/static/css/login.css">
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <h1>Criar Usuário Admin</h1>
+            <p style="color: #666; margin-bottom: 20px;">Primeiro acesso - Configure o administrador do sistema</p>
+
+            {% if error %}
+            <div
+                style="background: #fee; border: 1px solid #fcc; padding: 10px; margin-bottom: 15px; border-radius: 4px; color: #c33;">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form method="POST" action="/setup/create-admin">
+                <div class="form-group">
+                    <label for="nome">Nome Completo</label>
+                    <input type="text" id="nome" name="nome" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" name="senha" required minlength="6">
+                </div>
+
+                <button type="submit" class="btn-login">Criar Admin</button>
+            </form>
+
+            <p style="margin-top: 20px; font-size: 0.9em; color: #999;">
+                ⚠️ Este endpoint deve ser removido após criar o primeiro usuário!
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

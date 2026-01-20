@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Volumes list logic (only if exists)
   const volumesList = document.getElementById('volumes-list');
   const addBtn = document.getElementById('add-volume');
-  
+
   if (!volumesList || !addBtn) return;
 
   function updateIndexes() {
