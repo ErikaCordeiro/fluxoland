@@ -26,6 +26,30 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
+/* Modal responsivo em telas pequenas */
+@media (max-width: 768px) {
+    .modal-overlay {
+        padding: 16px;
+    }
+    
+    .modal-content {
+        max-width: 100%;
+        max-height: calc(100vh - 32px);
+        border-radius: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-overlay {
+        padding: 8px;
+    }
+    
+    .modal-content {
+        max-height: calc(100vh - 16px);
+        border-radius: 8px;
+    }
+}
+
 /* ============================= */
 /* HEADER                        */
 /* ============================= */
@@ -642,4 +666,228 @@ form textarea:disabled {
 .badge-concluida::before {
     content: "✔";
     font-size: 12px;
+}
+
+/* ========================================== */
+/* RESPONSIVIDADE                             */
+/* ========================================== */
+
+/* Tablets grandes (até 1400px) */
+@media (max-width: 1400px) {
+    .modal-content {
+        width: 95%;
+    }
+
+    .main-content-wrapper {
+        flex-direction: column;
+    }
+
+    .left-panel {
+        width: 100%;
+        max-width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .right-panel {
+        width: 100%;
+        flex: 1;
+    }
+}
+
+/* Tablets (até 1024px) */
+@media (max-width: 1024px) {
+    .modal-header-custom {
+        padding: 14px 16px;
+    }
+
+    .modal-header-custom h2 {
+        font-size: 16px;
+    }
+
+    .modal-steps {
+        padding: 10px 16px;
+        gap: 6px;
+    }
+
+    .step {
+        font-size: 13px;
+        padding: 8px;
+    }
+
+    .info-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .info-item {
+        width: 100%;
+    }
+
+    .btn-print {
+        width: 100%;
+    }
+}
+
+/* Celulares e telas pequenas (até 768px) */
+@media (max-width: 768px) {
+    .modal-header-custom {
+        padding: 12px;
+    }
+
+    .modal-header-custom h2 {
+        font-size: 15px;
+    }
+
+    .modal-steps {
+        flex-direction: column;
+        padding: 8px 12px;
+        gap: 4px;
+    }
+
+    .step {
+        padding: 10px;
+        font-size: 13px;
+    }
+
+    .modal-danger-action {
+        padding: 10px 12px;
+    }
+
+    .main-content-wrapper {
+        padding: 0;
+    }
+
+    .left-panel,
+    .right-panel {
+        padding: 16px 12px;
+    }
+
+    .info-section h3 {
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+    .info-item strong {
+        font-size: 12px;
+    }
+
+    .info-item span {
+        font-size: 13px;
+    }
+
+    table {
+        font-size: 12px;
+    }
+
+    table th,
+    table td {
+        padding: 8px 6px;
+    }
+
+    /* Tabelas com scroll horizontal em mobile */
+    .section-scrollable {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .section-scrollable table {
+        min-width: 600px;
+    }
+
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+        /* Evita zoom no iOS */
+        padding: 10px 12px;
+    }
+
+    button {
+        padding: 12px;
+        font-size: 14px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 12px;
+        font-size: 14px;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .form-row>div {
+        width: 100%;
+    }
+}
+
+/* Celulares pequenos (até 480px) */
+@media (max-width: 480px) {
+    .modal-header-custom {
+        padding: 10px;
+    }
+
+    .modal-header-custom h2 {
+        font-size: 14px;
+    }
+
+    .modal-close {
+        font-size: 20px;
+    }
+
+    .modal-steps {
+        padding: 6px 10px;
+    }
+
+    .step {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .left-panel,
+    .right-panel {
+        padding: 12px 10px;
+    }
+
+    .info-section h3 {
+        font-size: 13px;
+    }
+
+    .info-item strong {
+        font-size: 11px;
+    }
+
+    .info-item span {
+        font-size: 12px;
+    }
+
+    table {
+        font-size: 11px;
+    }
+
+    table th,
+    table td {
+        padding: 6px 4px;
+    }
+
+    .btn-print {
+        padding: 10px;
+        font-size: 13px;
+    }
+
+    .badge-status {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+}
+
+/* Orientação landscape em celulares */
+@media (max-width: 768px) and (orientation: landscape) {
+    .main-content-wrapper {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
 }

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}FluxoLand{% endblock %}</title>
 
-  <link rel="stylesheet" href="/static/css/base.css?v=2.0">
+  <link rel="stylesheet" href="/static/css/base.css?v=4.0">
   {% block css %}{% endblock %}
 </head>
 
@@ -17,7 +17,7 @@
       <a href="/propostas" class="topbar-logo">FluxoLand</a>
 
       {% if request.session.get("user_id") %}
-      <nav style="display: flex; gap: 4px;">
+      <nav class="topbar-nav">
         <a href="/propostas">Propostas</a>
         <a href="/transportadoras">Transportadoras</a>
         <a href="/caixas">Caixas</a>
@@ -27,8 +27,8 @@
     </div>
 
     {% if request.session.get("user_id") %}
-    <div>
-      <a href="/logout">Sair</a>
+    <div class="topbar-right">
+      <a href="/logout" class="btn-logout">Sair</a>
     </div>
     {% endif %}
   </header>

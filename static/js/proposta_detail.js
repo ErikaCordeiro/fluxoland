@@ -51,6 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Fechar modal ao clicar fora
   const modalOverlay = document.querySelector('.modal-overlay');
   if (modalOverlay) {
     modalOverlay.addEventListener('click', (e) => {
@@ -60,9 +61,19 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Fechar modal ao clicar no X
+  const modalClose = document.querySelector('.modal-close');
+  if (modalClose) {
+    modalClose.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = '/propostas';
+    });
+  }
+
   const activeStep = document.querySelector('.step.active');
   if (activeStep && activeStep.dataset.target === 'sec-envio') {
     const previewBox = document.getElementById('preview-box');
     if (previewBox) previewBox.style.display = 'none';
-  });
+  }
+});
 

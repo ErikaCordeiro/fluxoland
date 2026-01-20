@@ -207,12 +207,95 @@
 /* ============================= */
 /* RESPONSIVO                    */
 /* ============================= */
+@media (max-width: 1200px) {
+  .kanban {
+    gap: 16px;
+  }
+}
+
 @media (max-width: 1024px) {
   .kanban {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
 
   .kanban-column {
     min-height: auto;
+  }
+
+  .kanban-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .kanban-header h1 {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .kanban-header {
+    margin-bottom: 16px;
+  }
+
+  .kanban-column {
+    padding: 12px;
+  }
+
+  .kanban-column h3 {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .kanban-card {
+    padding: 10px;
+  }
+
+  .card-header .card-id {
+    font-size: 12px;
+  }
+
+  .card-header .card-price {
+    font-size: 12px;
+  }
+
+  .card-body .cliente {
+    font-size: 13px;
+  }
+
+  .card-body .cliente-doc {
+    font-size: 11px;
+  }
+
+  .card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .card-footer .vendedor {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .kanban {
+    gap: 12px;
+  }
+
+  .kanban-column {
+    padding: 10px;
+    border-radius: 6px;
+  }
+
+  .kanban-card {
+    padding: 8px;
+    margin-bottom: 8px;
+  }
+
+  .badge {
+    font-size: 9px;
+    padding: 3px 6px;
   }
 }
