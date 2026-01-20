@@ -22,12 +22,11 @@ load_dotenv(override=True)
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Fallback to SQLite for development
-if not DATABASE_URL or DATABASE_URL == "postgresql://postgres:postgres@localhost:5432/fluxoland":
-    DATABASE_URL = "sqlite:///./fluxoland.db"
-    logger.warning(
-        "Using SQLite for development. "
-        "Set DATABASE_URL in .env to use PostgreSQL."
+# Validate DATABASE_URL is set
+if not DATABASE_URL:
+    raise ValueError(
+        "DATABASE_URL não está configurado no arquivo .env. "
+        "Configure a variável DATABASE_URL para conectar ao banco de dados."
     )
 
 # Determine if debug mode is enabled
