@@ -64,5 +64,5 @@ document.addEventListener("DOMContentLoaded", () => {
   if (activeStep && activeStep.dataset.target === 'sec-envio') {
     const previewBox = document.getElementById('preview-box');
     if (previewBox) previewBox.style.display = 'none';
-});
+  });
 
