@@ -38,3 +38,7 @@ Thumbs.db
 
 # Documentation (optional - remove if you want to commit PDFs)
 *.pdf
+
+# Evolution API / Docker
+evolution-api/
+docker-compose.yml

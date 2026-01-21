@@ -6,6 +6,39 @@ document.addEventListener("DOMContentLoaded", () => {
     "sec-envio": document.getElementById("sec-envio")
   };
 
+  // Controle de Zoom
+  let currentZoom = 95;
+  const zoomInBtn = document.getElementById('zoom-in');
+  const zoomOutBtn = document.getElementById('zoom-out');
+  const zoomLevel = document.getElementById('zoom-level');
+  const preview = document.getElementById('proposal-preview');
+
+  function updateZoom(newZoom) {
+    currentZoom = Math.max(50, Math.min(150, newZoom));
+    if (preview) {
+      preview.style.transform = `scale(${currentZoom / 100})`;
+      preview.style.transformOrigin = 'top center';
+    }
+    if (zoomLevel) {
+      zoomLevel.textContent = `🔍 ${currentZoom}%`;
+    }
+  }
+
+  if (zoomInBtn) {
+    zoomInBtn.addEventListener('click', () => {
+      updateZoom(currentZoom + 10);
+    });
+  }
+
+  if (zoomOutBtn) {
+    zoomOutBtn.addEventListener('click', () => {
+      updateZoom(currentZoom - 10);
+    });
+  }
+
+  // Inicializa o zoom
+  updateZoom(95);
+
   function showSection(sectionId) {
     Object.entries(sections).forEach(([id, section]) => {
       if (section) section.style.display = "none";

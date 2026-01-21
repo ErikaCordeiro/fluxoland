@@ -3,11 +3,11 @@
 {% block title %}Proposta #{{ proposta.display_numero }}{% endblock %}
 
 {% block css %}
-<link rel="stylesheet" href="/static/css/proposta_detail.css?v=11.0">
+<link rel="stylesheet" href="/static/css/proposta_detail.css?v=25.0">
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/proposta_detail.js?v=11.0"></script>
+<script src="/static/js/proposta_detail.js?v=12.0"></script>
 <script src="/static/js/proposta_volumes.js"></script>
 {% endblock %}
 
@@ -103,7 +103,11 @@
             <a class="btn-secondary" target="_blank" href="/propostas/{{ proposta.id }}/abrir">Abrir em Nova Aba</a>
             <button class="btn-secondary" id="btn-print">Imprimir</button>
           </div>
-          <div class="preview-zoom">🔍 95%</div>
+          <div class="preview-zoom">
+            <button class="zoom-btn" id="zoom-out" title="Diminuir zoom">-</button>
+            <span id="zoom-level">🔍 95%</span>
+            <button class="zoom-btn" id="zoom-in" title="Aumentar zoom">+</button>
+          </div>
         </div>
 
         <div class="proposal-preview" id="proposal-preview">

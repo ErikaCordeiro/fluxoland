@@ -181,8 +181,16 @@ class BlingImportService:
             # ==================================================
             # RESTAURA SIMULAÇÃO E AJUSTA STATUS
             # ==================================================
+            # IMPORTANTE: Verifica primeiro se todos os produtos têm medidas
+            # mesmo que tenha simulação anterior, produtos novos podem não ter
+            produtos_com_medidas_completas = all(
+                item.produto.possui_medidas_completas()
+                for item in proposta_existente.itens
+                if item.produto
+            )
+            
             # Se tinha simulação, recria automaticamente
-            if tinha_simulacao:
+            if tinha_simulacao and produtos_com_medidas_completas:
                 # Deleta a simulação existente primeiro (por causa da constraint UNIQUE)
                 db.delete(simulacao_anterior)
                 db.flush()
@@ -216,6 +224,23 @@ class BlingImportService:
                         status=proposta_existente.status,
                         observacao="Dados e simulação atualizados do Bling",
                     )
+            elif tinha_simulacao and not produtos_com_medidas_completas:
+                # Tinha simulação MAS agora tem produtos sem medidas
+                # DEVE voltar para pendente_simulacao
+                db.delete(simulacao_anterior)
+                db.flush()
+                
+                # Limpa cubagem
+                proposta_existente.cubagem_m3 = None
+                proposta_existente.cubagem_ajustada = False
+                
+                # Volta para simulação
+                PropostaService._atualizar_status(
+                    db=db,
+                    proposta=proposta_existente,
+                    novo_status=PropostaStatus.pendente_simulacao,
+                    observacao=f"Proposta reimportada com produtos novos sem medidas - necessária nova simulação",
+                )
             else:
                 # ==================================================
                 # SEM SIMULAÇÃO ANTERIOR - VERIFICA SE TEM MEDIDAS
