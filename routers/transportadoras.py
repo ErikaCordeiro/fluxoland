@@ -85,8 +85,14 @@ def excluir_transportadora(
     transportadora = db.get(Transportadora, t_id)
 
     if transportadora:
-        db.delete(transportadora)
-        db.commit()
+        try:
+            db.delete(transportadora)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            # Se houver erro (ex: cotações usando esta transportadora),
+            # apenas redireciona sem fazer nada
+            pass
 
     return RedirectResponse(
         "/transportadoras",
