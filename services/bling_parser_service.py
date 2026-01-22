@@ -148,14 +148,81 @@ class BlingParserService:
                 # Remove a palavra "Vendedor:" se vier junto
                 vendedor = vendedor.replace("Vendedor:", "").replace("Vendedor", "").strip()
 
+        # Extrai valores da tabela de totais
+        # A tabela tem 8 colunas na ordem:
+        # Nº itens | Soma Qtdes | Total outros | Desconto total itens | Total itens | Desconto | Frete | Total proposta
+        valores_totais = BlingParserService._extrair_valores_tabela_totais(texto)
+        
         return {
             "numero": BlingParserService._buscar_valor(texto, "Proposta Nº", default=None),
             "data": BlingParserService._buscar_data(texto),
             "vendedor": vendedor if vendedor and len(vendedor.strip()) > 1 else None,
-            "valor_produtos": BlingParserService._buscar_float(texto, "Total dos itens"),
-            "valor_frete": BlingParserService._buscar_float(texto, "Frete"),
-            "valor_total": BlingParserService._buscar_float(texto, "Total da proposta"),
+            "valor_produtos": valores_totais.get("total_itens"),
+            "desconto": valores_totais.get("desconto"),
+            "valor_frete": valores_totais.get("frete"),
+            "valor_total": valores_totais.get("total_proposta"),
         }
+    
+    @staticmethod
+    def _extrair_valores_tabela_totais(texto: str) -> dict:
+        """
+        Extrai os valores da tabela de totais do Bling.
+        A tabela aparece após os cabeçalhos e tem 8 valores em sequência.
+        """
+        try:
+            # Procura pela sequência de cabeçalhos da tabela de totais
+            if "Total da proposta" not in texto:
+                return {}
+            
+            # Divide o texto em linhas
+            linhas = texto.split("\n")
+            
+            # Encontra a linha do cabeçalho "Total da proposta"
+            idx_total_proposta = None
+            for i, linha in enumerate(linhas):
+                if "Total da proposta" in linha:
+                    idx_total_proposta = i
+                    break
+            
+            if idx_total_proposta is None:
+                return {}
+            
+            # Os valores vêm nas próximas linhas após o cabeçalho
+            # Coleta as próximas linhas que contenham números
+            valores = []
+            for i in range(idx_total_proposta + 1, min(idx_total_proposta + 15, len(linhas))):
+                linha = linhas[i].strip()
+                # Verifica se é uma linha com valor numérico
+                if linha and any(c.isdigit() for c in linha):
+                    try:
+                        valor = float(
+                            linha.replace("R$", "")
+                            .replace(".", "")
+                            .replace(",", ".")
+                            .strip()
+                        )
+                        valores.append(valor)
+                        if len(valores) >= 8:  # Já temos os 8 valores
+                            break
+                    except:
+                        continue
+            
+            # Se conseguiu extrair pelo menos 8 valores, mapeia para os campos
+            if len(valores) >= 8:
+                return {
+                    "num_itens": valores[0],
+                    "soma_qtdes": valores[1],
+                    "total_outros": valores[2],
+                    "desconto_total_itens": valores[3],
+                    "total_itens": valores[4],
+                    "desconto": valores[5],
+                    "frete": valores[6],
+                    "total_proposta": valores[7],
+                }
+            
+            return {}
+        except Exception:
+            return {}
 
     # ======================================================
     # ITENS / PRODUTOS
@@ -298,7 +365,17 @@ class BlingParserService:
             return None
         try:
             trecho = texto.split(chave, 1)[1]
+            # Tenta pegar valor na mesma linha
             valor = trecho.split("\n")[0]
+            
+            # Se não tiver valor na mesma linha, tenta nas próximas 3 linhas
+            if not any(c.isdigit() for c in valor):
+                linhas = trecho.split("\n")
+                for i in range(1, min(4, len(linhas))):
+                    if any(c.isdigit() for c in linhas[i]):
+                        valor = linhas[i]
+                        break
+            
             return float(
                 valor.replace("R$", "")
                 .replace(".", "")

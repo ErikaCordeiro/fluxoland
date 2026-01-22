@@ -141,6 +141,7 @@ class Proposta(Base):
     )
 
     criado_em = Column(DateTime, default=datetime.utcnow)
+    atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # CLIENTE
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
@@ -159,6 +160,9 @@ class Proposta(Base):
     cubagem_m3 = Column(Float)
     cubagem_manual_m3 = Column(Float)
     cubagem_ajustada = Column(Boolean, default=False)
+
+    # VALORES FINANCEIROS
+    desconto = Column(Float)  # desconto aplicado
 
     observacao_importacao = Column(Text)
 
@@ -214,6 +218,11 @@ class Proposta(Base):
                 # fallback para quantidade * preco_unitario quando preco_total não está preenchido
                 if item.preco_unitario is not None and item.quantidade is not None:
                     total += item.preco_unitario * item.quantidade
+        
+        # Aplica desconto se existir
+        if self.desconto is not None and self.desconto > 0:
+            total -= self.desconto
+        
         return total
     
     @property
@@ -237,6 +246,12 @@ class Proposta(Base):
             except IndexError:
                 return None
         return None
+    
+    @property
+    def tempo_atualizado(self) -> str:
+        """Retorna tempo relativo desde a última atualização"""
+        from utils.time import time_ago
+        return time_ago(self.atualizado_em) if self.atualizado_em else time_ago(self.criado_em)
 
 
 # ======================================================
@@ -293,6 +308,7 @@ class Simulacao(Base):
 
     tipo = Column(Enum(TipoSimulacao), nullable=False)
     descricao = Column(Text)
+    automatica = Column(Boolean, default=False)
 
     criado_em = Column(DateTime, default=datetime.utcnow)
 

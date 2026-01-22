@@ -18,7 +18,8 @@
 
     <!-- ================= HEADER ================= -->
     <div class="modal-header-custom">
-      <h2>Proposta #{{ proposta.display_numero }}</h2>
+      <h2>Proposta #{{ proposta.display_numero }} {% if proposta.simulacao and proposta.simulacao.automatica %}<span
+          style="color: #FF8C00; font-size: 0.85em;">(Automática)</span>{% endif %}</h2>
       <a href="/propostas" class="modal-close">×</a>
     </div>
 
@@ -231,10 +232,12 @@
                     '%.2f'|format(0)|replace('.', ',') }}</td>
                   <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{{
                     '%.2f'|format(0)|replace('.', ',') }}</td>
-                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{{ proposta.valor_total |
-                    money_no_symbol }}</td>
-                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{{
-                    '%.2f'|format(0)|replace('.', ',') }}</td>
+                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{% if proposta.desconto %}{{
+                    (proposta.valor_total + proposta.desconto) | money_no_symbol }}{% else %}{{ proposta.valor_total |
+                    money_no_symbol }}{% endif %}</td>
+                  <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{% if proposta.desconto %}{{
+                    proposta.desconto | money_no_symbol }}{% else %}{{ '%.2f'|format(0)|replace('.', ',') }}{% endif %}
+                  </td>
                   <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">{{
                     '%.2f'|format(0)|replace('.', ',') }}</td>
                   <td

@@ -67,6 +67,9 @@ class PropostaService:
 
         simulacao.tipo = tipo
         simulacao.descricao = descricao
+        
+        # Atualiza timestamp
+        proposta.atualizado_em = datetime.utcnow()
 
         # 🔥 REGRA AUTOMÁTICA DE STATUS
         novo_status = PropostaService.definir_status_automatico(proposta)
@@ -104,6 +107,7 @@ class PropostaService:
     # ======================================================
     @staticmethod
     def finalizar_cotacao(db: Session, proposta: Proposta):
+        proposta.atualizado_em = datetime.utcnow()
         PropostaService._atualizar_status(
             db,
             proposta,
@@ -131,6 +135,8 @@ class PropostaService:
         envio.meio_envio = meio_envio
         envio.enviado = True
         envio.enviado_em = datetime.utcnow()
+        
+        proposta.atualizado_em = datetime.utcnow()
 
         PropostaService._atualizar_status(
             db,
@@ -153,6 +159,7 @@ class PropostaService:
             return
 
         proposta.status = novo_status
+        proposta.atualizado_em = datetime.utcnow()
 
         PropostaService._registrar_historico(
             db,

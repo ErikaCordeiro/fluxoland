@@ -7,7 +7,6 @@ from datetime import datetime
 from database import get_db
 from dependencies import get_current_user_html
 from templates import templates
-from utils.time import tempo_relativo
 
 from models import (
     Proposta,
@@ -86,7 +85,6 @@ def kanban_propostas(
     ).all()
 
     for p in pend_sim + pend_cot + pend_env:
-        p.tempo_criado = tempo_relativo(p.criado_em)
         # nome do cliente para facilitar templates
         p.cliente_nome = p.cliente.nome if p.cliente else ""
 
@@ -292,19 +290,23 @@ async def simular_por_volumes(
 
     # 1) Collect selected caixa rows (volume_select[index] and volume_qtd[index])
     caixas_payload = []
+    peso_total = 0.0
     index = 0
     while f"volume_select[{index}]" in form:
         sel = form.get(f"volume_select[{index}]")
         try:
             qtd = int(form.get(f"volume_qtd[{index}]") or 0)
+            peso = float(form.get(f"volume_peso[{index}]") or 0)
         except (TypeError, ValueError):
             qtd = 0
+            peso = 0
 
         if sel and sel != "manual":
             try:
                 cid = int(sel)
                 if qtd > 0:
                     caixas_payload.append({"caixa_id": cid, "quantidade": qtd})
+                    peso_total += peso
             except (TypeError, ValueError):
                 continue
 
@@ -382,8 +384,11 @@ async def simular_por_volumes(
     db.add(simulacao)
     db.flush()
 
+    # Salva peso e cubagem na proposta
     proposta.cubagem_m3 = round(volume_total_m3, 4)
     proposta.cubagem_ajustada = False
+    if peso_total > 0:
+        proposta.peso_total_kg = peso_total
 
     db.commit()
     db.refresh(proposta)
@@ -422,6 +427,9 @@ async def simular_por_volumes(
                 produto.altura_cm = lado_cm
                 produto.peso_unitario_kg = 1.0  # Peso padrão - pode ser ajustado depois
                 produto.data_atualizacao = datetime.utcnow()
+        
+        # Atualizar timestamp da proposta
+        proposta.atualizado_em = datetime.utcnow()
         
         db.commit()
         
@@ -469,6 +477,9 @@ async def salvar_simulacao_manual(
 
     db.add(simulacao)
     db.flush()
+
+    # Atualizar timestamp
+    proposta.atualizado_em = datetime.utcnow()
 
     db.commit()
     db.refresh(proposta)
@@ -597,6 +608,7 @@ def cancelar_proposta(
         return RedirectResponse("/propostas", HTTP_303_SEE_OTHER)
 
     proposta.status = PropostaStatus.cancelada
+    proposta.atualizado_em = datetime.utcnow()
 
     db.add(
         PropostaHistorico(
@@ -650,6 +662,7 @@ async def salvar_simulacao_galpao(
     )
 
     proposta.status = PropostaStatus.pendente_cotacao
+    proposta.atualizado_em = datetime.utcnow()
     db.add(
         PropostaHistorico(
             proposta_id=proposta.id,
@@ -702,15 +715,28 @@ async def salvar_cotacao(
                 preco = float(preco_str)
                 prazo_dias = int(prazo_str)
 
-                db.add(
-                    CotacaoFrete(
-                        proposta_id=proposta.id,
-                        transportadora_id=transportadora_id,
-                        preco=preco,
-                        prazo_dias=prazo_dias,
-                        numero_cotacao=numero_cotacao,
+                # Verificar se já existe uma cotação para esta transportadora
+                cotacao_existente = db.query(CotacaoFrete).filter(
+                    CotacaoFrete.proposta_id == proposta.id,
+                    CotacaoFrete.transportadora_id == transportadora_id
+                ).first()
+
+                if cotacao_existente:
+                    # Atualizar cotação existente
+                    cotacao_existente.preco = preco
+                    cotacao_existente.prazo_dias = prazo_dias
+                    cotacao_existente.numero_cotacao = numero_cotacao
+                else:
+                    # Criar nova cotação
+                    db.add(
+                        CotacaoFrete(
+                            proposta_id=proposta.id,
+                            transportadora_id=transportadora_id,
+                            preco=preco,
+                            prazo_dias=prazo_dias,
+                            numero_cotacao=numero_cotacao,
+                        )
                     )
-                )
                 cotacoes_criadas += 1
             except (TypeError, ValueError):
                 continue
@@ -719,6 +745,8 @@ async def salvar_cotacao(
 
     # Se pelo menos uma cotação foi criada
     if cotacoes_criadas > 0:
+        # Atualizar timestamp
+        proposta.atualizado_em = datetime.utcnow()
         db.commit()
 
         # Se ação for "concluir", muda status para pendente_envio
@@ -762,6 +790,9 @@ def enviar_proposta(
     )
     db.add(envio)
     db.flush()
+
+    # Atualizar timestamp
+    proposta.atualizado_em = datetime.utcnow()
 
     # Atualizar status para concluída
     PropostaService._atualizar_status(

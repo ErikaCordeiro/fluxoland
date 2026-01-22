@@ -44,6 +44,7 @@ class SimulacaoVolumesService:
 
         volume_total_cm3 = 0.0
         descricao_linhas: list[str] = []
+        quantidade_total_volumes = 0
 
         # --------------------------------------------------
         # 1. PROCESSA CAIXAS
@@ -64,10 +65,11 @@ class SimulacaoVolumesService:
 
             volume_unitario_cm3 = caixa.volume_cm3
             volume_total_cm3 += volume_unitario_cm3 * quantidade
+            quantidade_total_volumes += quantidade
 
             descricao_linhas.append(
                 f"{quantidade}x {caixa.nome} "
-                f"({caixa.altura_cm}x{caixa.largura_cm}x{caixa.comprimento_cm} cm)"
+                f"({caixa.comprimento_cm}x{caixa.largura_cm}x{caixa.altura_cm} cm)"
             )
 
         if volume_total_cm3 <= 0:

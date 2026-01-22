@@ -258,6 +258,10 @@
                     <td>
                         <div id="desc-display-{{ sim.id }}" class="descricao-display"
                             onclick="editarDescricao({{ sim.id }}, '{{ sim.descricao|e if sim.descricao else '' }}')">
+                            {% if sim.automatica %}
+                            <span style="color: #FF8C00; font-weight: 600; font-size: 0.85em;">🤖 Simulação
+                                Automática</span><br>
+                            {% endif %}
                             {% if sim.descricao %}
                             {{ sim.descricao }}
                             {% else %}

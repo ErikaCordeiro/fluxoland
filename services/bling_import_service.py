@@ -122,6 +122,16 @@ class BlingImportService:
             proposta_existente.observacao_importacao = obs
             
             # ==================================================
+            # ATUALIZA DESCONTO
+            # ==================================================
+            if pedido:
+                proposta_existente.desconto = pedido.get("desconto")
+            
+            # Atualiza timestamp de modificação
+            from datetime import datetime
+            proposta_existente.atualizado_em = datetime.utcnow()
+            
+            # ==================================================
             # ATUALIZA ITENS DA PROPOSTA
             # ==================================================
             # Remove todos os itens antigos
@@ -200,6 +210,7 @@ class BlingImportService:
                     proposta_id=proposta_existente.id,
                     tipo=simulacao_anterior.tipo,
                     descricao=simulacao_anterior.descricao,
+                    automatica=True,
                 )
                 db.add(nova_simulacao)
                 
@@ -282,6 +293,7 @@ class BlingImportService:
                             proposta_id=proposta_existente.id,
                             tipo=TipoSimulacao.volumes,
                             descricao="\n".join(descricao_linhas),
+                            automatica=True,
                         )
                         db.add(simulacao)
                         
@@ -376,6 +388,7 @@ class BlingImportService:
             vendedor_id=vendedor_id,
             observacao_importacao=obs,
             status=PropostaStatus.pendente_simulacao,
+            desconto=pedido.get("desconto") if pedido else None,
         )
 
         db.add(proposta)
@@ -478,6 +491,7 @@ class BlingImportService:
                 proposta_id=proposta.id,
                 tipo=simulacao_referencia.tipo,
                 descricao=simulacao_referencia.descricao,
+                automatica=True,
             )
             db.add(nova_simulacao)
             
@@ -529,6 +543,7 @@ class BlingImportService:
                         proposta_id=proposta.id,
                         tipo=TipoSimulacao.volumes,
                         descricao="\n".join(descricao_linhas),
+                        automatica=True,
                     )
                     db.add(simulacao)
                     
