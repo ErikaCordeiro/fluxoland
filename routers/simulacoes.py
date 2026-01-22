@@ -24,10 +24,7 @@ def listar_simulacoes(
     
     simulacoes = (
         db.query(Simulacao)
-        .options(
-            joinedload(Simulacao.proposta).joinedload(Proposta.cliente),
-            joinedload(Simulacao.proposta).joinedload(Proposta.itens)
-        )
+        .join(Simulacao.proposta)
         .order_by(Simulacao.criado_em.desc())
         .all()
     )
