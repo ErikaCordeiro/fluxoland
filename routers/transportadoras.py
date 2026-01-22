@@ -6,7 +6,7 @@ from starlette.status import HTTP_303_SEE_OTHER
 from database import get_db
 from dependencies import get_current_user_html, require_lider_html
 from templates import templates
-from models import Transportadora
+from models import Transportadora, CotacaoFrete
 
 router = APIRouter(prefix="/transportadoras", tags=["transportadoras"])
 
@@ -85,14 +85,17 @@ def excluir_transportadora(
     transportadora = db.get(Transportadora, t_id)
 
     if transportadora:
-        try:
+        # Verifica se existem cotações usando esta transportadora
+        tem_cotacoes = (
+            db.query(CotacaoFrete)
+            .filter(CotacaoFrete.transportadora_id == t_id)
+            .count()
+        ) > 0
+        
+        # Só deleta se não houver cotações vinculadas
+        if not tem_cotacoes:
             db.delete(transportadora)
             db.commit()
-        except Exception as e:
-            db.rollback()
-            # Se houver erro (ex: cotações usando esta transportadora),
-            # apenas redireciona sem fazer nada
-            pass
 
     return RedirectResponse(
         "/transportadoras",
