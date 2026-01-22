@@ -46,6 +46,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created/verified")
     
+    # Run migrations
+    _run_migrations()
+    
     # Create default admin user if needed
     _create_default_admin()
     
@@ -53,6 +56,49 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     
     # Shutdown
     logger.info("Shutting down FluxoLand application...")
+
+
+def _run_migrations() -> None:
+    """Execute pending database migrations."""
+    from sqlalchemy import text
+    db = SessionLocal()
+    try:
+        logger.info("Running database migrations...")
+        
+        # Migração 1: adicionar desconto
+        try:
+            db.execute(text("ALTER TABLE propostas ADD COLUMN IF NOT EXISTS desconto FLOAT;"))
+            db.commit()
+            logger.info("✓ Migration: desconto column added")
+        except Exception as e:
+            logger.warning(f"Migration desconto skipped: {e}")
+            db.rollback()
+        
+        # Migração 2: adicionar atualizado_em
+        try:
+            db.execute(text("ALTER TABLE propostas ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP;"))
+            db.commit()
+            logger.info("✓ Migration: atualizado_em column added")
+        except Exception as e:
+            logger.warning(f"Migration atualizado_em skipped: {e}")
+            db.rollback()
+        
+        # Migração 3: preencher atualizado_em
+        try:
+            db.execute(text("UPDATE propostas SET atualizado_em = criado_em WHERE atualizado_em IS NULL;"))
+            db.commit()
+            logger.info("✓ Migration: atualizado_em populated")
+        except Exception as e:
+            logger.warning(f"Migration populate atualizado_em skipped: {e}")
+            db.rollback()
+            
+        logger.info("Migrations completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Error running migrations: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
 
 def _create_default_admin() -> None:
