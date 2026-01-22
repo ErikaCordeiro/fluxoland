@@ -15,6 +15,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
+from sqlalchemy import text
 
 from auth import get_password_hash, router as auth_router
 from database import Base, SessionLocal, engine
@@ -59,41 +60,56 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def _run_migrations() -> None:
-    """Execute pending database migrations."""
-    from sqlalchemy import text
+    """Run database migrations."""
     db = SessionLocal()
     try:
         logger.info("Running database migrations...")
         
-        # Migração 1: adicionar desconto
+        # Migration 1: Add desconto column to propostas
         try:
-            db.execute(text("ALTER TABLE propostas ADD COLUMN IF NOT EXISTS desconto FLOAT;"))
+            db.execute(text(
+                "ALTER TABLE propostas ADD COLUMN IF NOT EXISTS desconto FLOAT;"
+            ))
             db.commit()
             logger.info("✓ Migration: desconto column added")
         except Exception as e:
-            logger.warning(f"Migration desconto skipped: {e}")
+            logger.error(f"Migration desconto failed: {e}")
             db.rollback()
         
-        # Migração 2: adicionar atualizado_em
+        # Migration 2: Add atualizado_em column to propostas
         try:
-            db.execute(text("ALTER TABLE propostas ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP;"))
+            db.execute(text(
+                "ALTER TABLE propostas ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP;"
+            ))
             db.commit()
             logger.info("✓ Migration: atualizado_em column added")
         except Exception as e:
-            logger.warning(f"Migration atualizado_em skipped: {e}")
+            logger.error(f"Migration atualizado_em failed: {e}")
             db.rollback()
         
-        # Migração 3: preencher atualizado_em
+        # Migration 3: Populate atualizado_em with criado_em
         try:
-            db.execute(text("UPDATE propostas SET atualizado_em = criado_em WHERE atualizado_em IS NULL;"))
+            db.execute(text(
+                "UPDATE propostas SET atualizado_em = criado_em WHERE atualizado_em IS NULL;"
+            ))
             db.commit()
             logger.info("✓ Migration: atualizado_em populated")
         except Exception as e:
-            logger.warning(f"Migration populate atualizado_em skipped: {e}")
+            logger.error(f"Migration atualizado_em populate failed: {e}")
             db.rollback()
-            
-        logger.info("Migrations completed successfully")
         
+        # Migration 4: Add automatica column to simulacoes
+        try:
+            db.execute(text(
+                "ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS automatica BOOLEAN DEFAULT FALSE;"
+            ))
+            db.commit()
+            logger.info("✓ Migration: simulacoes.automatica column added")
+        except Exception as e:
+            logger.error(f"Migration simulacoes.automatica failed: {e}")
+            db.rollback()
+        
+        logger.info("Migrations completed successfully")
     except Exception as e:
         logger.error(f"Error running migrations: {e}")
         db.rollback()
