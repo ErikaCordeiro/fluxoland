@@ -22,6 +22,7 @@ from database import Base, SessionLocal, engine
 from models import User
 from routers import bling_import, caixas, propostas, simulacoes, transportadoras, contatos_notificacao, dashboard
 from templates import templates
+from auto_migrate import verificar_e_executar_migrations
 
 # Configure logging
 logging.basicConfig(
@@ -47,7 +48,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created/verified")
     
-    # Run migrations
+    # Run auto-migrations (Dashboard + WhatsApp)
+    verificar_e_executar_migrations()
+    
+    # Run legacy migrations
     _run_migrations()
     
     # Create default admin user if needed
