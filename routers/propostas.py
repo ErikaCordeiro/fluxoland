@@ -1,13 +1,14 @@
+import re
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session, joinedload
 from starlette.status import HTTP_303_SEE_OTHER
-from datetime import datetime
 
 from database import get_db
 from dependencies import get_current_user_html
 from templates import templates
-
 from models import (
     Proposta,
     PropostaProduto,
@@ -22,7 +23,6 @@ from models import (
     PropostaHistorico,
     EnvioProposta,
 )
-
 from services.galpao_service import GalpaoService
 from services.bling_parser_service import BlingParserService
 from services.bling_import_service import BlingImportService
@@ -477,6 +477,36 @@ async def salvar_simulacao_manual(
 
     db.add(simulacao)
     db.flush()
+
+    # Processa cubagem e peso da proposta
+    cubagem_str = form.get("cubagem_m3", "").strip()
+    peso_str = form.get("peso_total_kg", "").strip()
+    
+    # Cubagem: usa valor informado ou extrai do texto (formato: LxAxP)
+    if cubagem_str:
+        try:
+            proposta.cubagem_m3 = float(cubagem_str)
+            proposta.cubagem_ajustada = False
+        except ValueError:
+            pass
+    else:
+        matches = re.findall(r'(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)', descricao, re.IGNORECASE)
+        if matches:
+            l, a, p = matches[0]
+            volume_cm3 = float(l) * float(a) * float(p)
+            proposta.cubagem_m3 = round(volume_cm3 / 1_000_000, 4)
+            proposta.cubagem_ajustada = False
+    
+    # Peso: usa valor informado ou extrai do texto (formato: XX kg)
+    if peso_str:
+        try:
+            proposta.peso_total_kg = float(peso_str)
+        except ValueError:
+            pass
+    else:
+        peso_match = re.search(r'(\d+(?:\.\d+)?)\s*kg', descricao, re.IGNORECASE)
+        if peso_match:
+            proposta.peso_total_kg = float(peso_match.group(1))
 
     # Atualizar timestamp
     proposta.atualizado_em = datetime.utcnow()

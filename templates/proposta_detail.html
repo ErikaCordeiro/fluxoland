@@ -337,8 +337,26 @@
           style="display:{% if is_manual %}block{% else %}none{% endif %};">
           <h4>Simulação Manual</h4>
           <form method="post" action="/propostas/{{ proposta.id }}/simulacao-manual">
-            <textarea name="simulacao_texto" rows="8"
+            <textarea name="simulacao_texto" rows="6"
               placeholder="Descreva aqui a simulação completa com volumes, pesos, dimensões e outras informações relevantes...">{{ (proposta.simulacao.descricao if proposta.simulacao else '') or '' }}</textarea>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600;">Cubagem
+                  (m³)</label>
+                <input type="number" name="cubagem_m3" step="0.0001" min="0" value="{{ proposta.cubagem_m3 or '' }}"
+                  placeholder="Ex: 2.5000"
+                  style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600;">Peso Total
+                  (kg)</label>
+                <input type="number" name="peso_total_kg" step="0.01" min="0" value="{{ proposta.peso_total_kg or '' }}"
+                  placeholder="Ex: 150.00"
+                  style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+              </div>
+            </div>
+
             <p class="muted" style="font-size: 12px; margin-top: 8px;">Esta simulação será salva e reutilizada
               automaticamente para pedidos com os mesmos produtos.</p>
             <div class="actions">
@@ -365,9 +383,11 @@
 
           <div
             style="margin-top: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px;">
-            {% if proposta.cubagem_final_m3() %}
+            {% set cubagem_final = proposta.cubagem_manual_m3 if (proposta.cubagem_ajustada and
+            proposta.cubagem_manual_m3) else proposta.cubagem_m3 %}
+            {% if cubagem_final %}
             <div>
-              <strong>Cubagem:</strong> {{ '%.4f' % proposta.cubagem_final_m3() }} m³
+              <strong>Cubagem:</strong> {{ '%.4f' % cubagem_final }} m³
             </div>
             {% endif %}
             {% if proposta.peso_total_kg %}

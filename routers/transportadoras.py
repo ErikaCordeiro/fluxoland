@@ -85,17 +85,12 @@ def excluir_transportadora(
     transportadora = db.get(Transportadora, t_id)
 
     if transportadora:
-        # Verifica se existem cotações usando esta transportadora
-        tem_cotacoes = (
-            db.query(CotacaoFrete)
-            .filter(CotacaoFrete.transportadora_id == t_id)
-            .count()
-        ) > 0
+        # Exclui todas as cotações vinculadas primeiro
+        db.query(CotacaoFrete).filter(CotacaoFrete.transportadora_id == t_id).delete()
         
-        # Só deleta se não houver cotações vinculadas
-        if not tem_cotacoes:
-            db.delete(transportadora)
-            db.commit()
+        # Agora exclui a transportadora
+        db.delete(transportadora)
+        db.commit()
 
     return RedirectResponse(
         "/transportadoras",

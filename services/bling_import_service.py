@@ -218,23 +218,14 @@ class BlingImportService:
                 proposta_existente.cubagem_m3 = cubagem_anterior
                 proposta_existente.cubagem_ajustada = cubagem_ajustada_anterior
                 
-                # Se estava finalizada (cancelada/concluída), reativa para cotação
-                # Se já estava em outro status, mantém apenas atualizando dados
-                if status_era_finalizado:
-                    PropostaService._atualizar_status(
-                        db=db,
-                        proposta=proposta_existente,
-                        novo_status=PropostaStatus.pendente_cotacao,
-                        observacao=f"Proposta reimportada (anteriormente {status_anterior}) - dados e simulação atualizados do Bling",
-                    )
-                else:
-                    # Mantém no status atual, apenas registra a atualização
-                    PropostaService._registrar_historico(
-                        db=db,
-                        proposta=proposta_existente,
-                        status=proposta_existente.status,
-                        observacao="Dados e simulação atualizados do Bling",
-                    )
+                # Sempre volta para pendente_cotacao ao reimportar (com simulação preservada)
+                # Isso garante que a proposta apareça na fila ativa
+                PropostaService._atualizar_status(
+                    db=db,
+                    proposta=proposta_existente,
+                    novo_status=PropostaStatus.pendente_cotacao,
+                    observacao=f"Proposta reimportada do Bling - dados e simulação atualizados",
+                )
             elif tinha_simulacao and not produtos_com_medidas_completas:
                 # Tinha simulação MAS agora tem produtos sem medidas
                 # DEVE voltar para pendente_simulacao
