@@ -200,7 +200,7 @@
     // Inject data from backend
     window.dashboardData = {
         chartStatus: {{ chart_status | tojson }},
-        chartEvolution: {{ chart_evolution | tojson }}
+    chartEvolution: { { chart_evolution | tojson } }
     };
 </script>
 {% endblock %}
