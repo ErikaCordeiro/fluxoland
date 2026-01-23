@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Contatos para Notificação{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1>Contatos para Notificação</h1>
+    <p style="margin-top: 8px; color: #6b7280; font-size: 14px;">
+        Gerencie os contatos que recebem notificações WhatsApp automáticas.
+    </p>
+
+    {% if user.role.value == "lider" %}
+    <button class="btn-primary" onclick="abrirModalNovoContato()">
+        + Novo Contato
+    </button>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Lista de Contatos</h2>
+
+    {% if contatos %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>Tipo de Notificação</th>
+                <th>Status</th>
+                <th style="width: 120px;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contato in contatos %}
+            <tr>
+                <td>{{ contato.nome }}</td>
+                <td>{{ contato.telefone }}</td>
+                <td>
+                    {% if contato.tipo.value == "simulacao" %}
+                    <span
+                        style="background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                        📦 Simulação
+                    </span>
+                    {% elif contato.tipo.value == "cotacao" %}
+                    <span
+                        style="background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                        💰 Cotação
+                    </span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if contato.ativo %}
+                    <span style="color: #10b981; font-weight: 600;">✓ Ativo</span>
+                    {% else %}
+                    <span style="color: #6b7280;">Inativo</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.role.value == "lider" %}
+                    <button class="btn-link"
+                        onclick="abrirModalEditarContato({{ contato.id }}, '{{ contato.nome }}', '{{ contato.telefone }}', '{{ contato.tipo.value }}')"
+                        title="Editar">
+                        ✏️
+                    </button>
+                    <form method="post" action="/contatos-notificacao/{{ contato.id }}/excluir" style="display:inline;"
+                        onsubmit="return confirm('Deseja excluir este contato?');">
+                        <button type="submit" class="btn-link danger" title="Excluir">🗑️</button>
+                    </form>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Nenhum contato cadastrado.</p>
+    {% endif %}
+</div>
+
+<!-- Legenda -->
+<div style="margin-top: 24px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+    <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">📌 Como funcionam as notificações:</h3>
+    <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #374151; line-height: 1.6;">
+        <li><strong>Simulação:</strong> Recebe quando proposta vai para <em>Pendente Simulação</em></li>
+        <li><strong>Cotação:</strong> Recebe quando proposta vai para <em>Pendente Cotação</em></li>
+        <li><strong>Vendedores:</strong> Recebem automaticamente quando proposta vai para <em>Pendente Envio</em>
+            (configure telefone em Vendedores)</li>
+    </ul>
+</div>
+
+<!-- ================= MODAL NOVO CONTATO ================= -->
+<div id="modalNovoContato" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Adicionar Contato</h3>
+
+        <form method="post" action="/contatos-notificacao/novo">
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" name="nome" placeholder="Ex: Rafael (Rafa)" required>
+            </div>
+
+            <div class="form-group">
+                <label>Telefone (WhatsApp)</label>
+                <input type="text" name="telefone" placeholder="Ex: 5547999999999 ou (47) 99999-9999" required>
+                <small style="color: #6b7280; font-size: 12px;">
+                    Formato internacional: 55 + DDD + Número (pode usar espaços e traços)
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label>Tipo de Notificação</label>
+                <select name="tipo" required>
+                    <option value="">Selecione...</option>
+                    <option value="simulacao">📦 Simulação</option>
+                    <option value="cotacao">💰 Cotação</option>
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="fecharModalNovoContato()">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-primary">
+                    Adicionar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ================= MODAL EDITAR CONTATO ================= -->
+<div id="modalEditarContato" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Editar Contato</h3>
+
+        <form id="formEditarContato" method="post" action="">
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" name="nome" id="editNome" required>
+            </div>
+
+            <div class="form-group">
+                <label>Telefone (WhatsApp)</label>
+                <input type="text" name="telefone" id="editTelefone" required>
+                <small style="color: #6b7280; font-size: 12px;">
+                    Formato internacional: 55 + DDD + Número
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label>Tipo de Notificação</label>
+                <select name="tipo" id="editTipo" required>
+                    <option value="simulacao">📦 Simulação</option>
+                    <option value="cotacao">💰 Cotação</option>
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="fecharModalEditarContato()">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-primary">
+                    Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalNovoContato() {
+        document.getElementById("modalNovoContato").style.display = "block";
+    }
+
+    function fecharModalNovoContato() {
+        document.getElementById("modalNovoContato").style.display = "none";
+    }
+
+    function abrirModalEditarContato(id, nome, telefone, tipo) {
+        document.getElementById("editNome").value = nome;
+        document.getElementById("editTelefone").value = telefone;
+        document.getElementById("editTipo").value = tipo;
+        document.getElementById("formEditarContato").action = "/contatos-notificacao/" + id + "/editar";
+        document.getElementById("modalEditarContato").style.display = "block";
+    }
+
+    function fecharModalEditarContato() {
+        document.getElementById("modalEditarContato").style.display = "none";
+    }
+</script>
+
+{% endblock %}

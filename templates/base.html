@@ -14,7 +14,7 @@
 
   <header class="topbar">
     <div class="topbar-left">
-      <a href="/propostas" class="topbar-logo">FluxoLand</a>
+      <a href="/dashboard" class="topbar-logo">FluxoLand</a>
 
       {% if request.session.get("user_id") %}
       <nav class="topbar-nav">
@@ -22,6 +22,7 @@
         <a href="/transportadoras">Transportadoras</a>
         <a href="/caixas">Caixas</a>
         <a href="/simulacoes">Simulações</a>
+        <a href="/contatos-notificacao">Notificações</a>
       </nav>
       {% endif %}
     </div>

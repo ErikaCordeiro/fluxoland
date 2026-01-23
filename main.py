@@ -20,7 +20,7 @@ from sqlalchemy import text
 from auth import get_password_hash, router as auth_router
 from database import Base, SessionLocal, engine
 from models import User
-from routers import bling_import, caixas, propostas, simulacoes, transportadoras
+from routers import bling_import, caixas, propostas, simulacoes, transportadoras, contatos_notificacao, dashboard
 from templates import templates
 
 # Configure logging
@@ -161,19 +161,21 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Root route
 @app.get("/", tags=["navigation"])
 async def home(request: Request) -> RedirectResponse:
-    """Redirect to login or propostas based on authentication status."""
+    """Redirect to login or dashboard based on authentication status."""
     if request.session.get("user_id"):
-        return RedirectResponse(url="/propostas", status_code=302)
+        return RedirectResponse(url="/dashboard", status_code=302)
     return RedirectResponse(url="/login", status_code=302)
 
 
 # Include routers
 app.include_router(auth_router, tags=["authentication"])
+app.include_router(dashboard.router, tags=["dashboard"])
 app.include_router(propostas.router, tags=["propostas"])
 app.include_router(transportadoras.router, tags=["transportadoras"])
 app.include_router(bling_import.router, tags=["integrations"])
 app.include_router(caixas.router, tags=["caixas"])
 app.include_router(simulacoes.router, tags=["simulacoes"])
+app.include_router(contatos_notificacao.router, tags=["notificacoes"])
 
 
 if __name__ == "__main__":

@@ -169,6 +169,13 @@ class PropostaService:
         )
 
         db.commit()
+        
+        # Envia notificação WhatsApp após commit
+        try:
+            from services.whatsapp_service import WhatsAppService
+            WhatsAppService.enviar_notificacao_mudanca_status(db, proposta, novo_status)
+        except Exception as e:
+            print(f"⚠️ Erro ao enviar notificação WhatsApp: {e}")
 
     @staticmethod
     def _registrar_historico(

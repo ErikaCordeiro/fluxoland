@@ -147,7 +147,7 @@ async def post_login(
         logger.info(f"User logged in successfully: {email}")
         
         return RedirectResponse(
-            url="/propostas",
+            url="/dashboard",
             status_code=HTTP_302_FOUND,
         )
     

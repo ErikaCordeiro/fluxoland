@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FluxoLand{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css/dashboard.css?v=2.0">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="dashboard-subtitle">Visão geral do FluxoLand</p>
+    </div>
+</div>
+
+<!-- Cards de Métricas -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-icon metric-icon-proposals">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <path
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+        </div>
+        <div class="metric-content">
+            <div class="metric-label">Propostas Hoje</div>
+            <div class="metric-value">{{ stats.propostas_hoje }}</div>
+            <div class="metric-change positive">+3 vs ontem</div>
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon metric-icon-simulacao">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+            </svg>
+        </div>
+        <div class="metric-content">
+            <div class="metric-label">Em Simulação</div>
+            <div class="metric-value">{{ stats.em_simulacao }}</div>
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon metric-icon-cotacao">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9 11l3 3L22 4" />
+            </svg>
+        </div>
+        <div class="metric-content">
+            <div class="metric-label">Em Cotação</div>
+            <div class="metric-value">{{ stats.em_cotacao }}</div>
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon metric-icon-envio">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+        </div>
+        <div class="metric-content">
+            <div class="metric-label">Em Envio</div>
+            <div class="metric-value">{{ stats.em_envio }}</div>
+        </div>
+    </div>
+
+    <div class="metric-card metric-card-highlight">
+        <div class="metric-icon metric-icon-valor">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+            </svg>
+        </div>
+        <div class="metric-content">
+            <div class="metric-label">Valor do Dia</div>
+            <div class="metric-value">R$ {{ "{:,.2f}".format(stats.valor_dia).replace(',', 'X').replace('.',
+                ',').replace('X', '.') }}</div>
+            <div class="metric-change positive">+12% vs média</div>
+        </div>
+    </div>
+</div>
+
+<!-- Grid Principal -->
+<div class="dashboard-main-grid">
+    <!-- Atividades Recentes -->
+    <div class="dashboard-section">
+        <h2 class="section-title">Atividades Recentes</h2>
+        <div class="activities-list">
+            {% if activities %}
+            {% for activity in activities %}
+            <div class="activity-item">
+                <div class="activity-left">
+                    <span class="activity-numero">{{ activity.numero }}</span>
+                    <span class="activity-badge activity-badge-{{ activity.status }}">
+                        {% if activity.status == 'pendente_simulacao' %}
+                        Simulação
+                        {% elif activity.status == 'pendente_cotacao' %}
+                        Cotação
+                        {% elif activity.status == 'pendente_envio' %}
+                        Envio
+                        {% else %}
+                        {{ activity.status }}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="activity-center">
+                    <div class="activity-cliente">{{ activity.cliente }}</div>
+                    <div class="activity-meta">{{ activity.status|replace('pendente_', '')|replace('_', ' ')|title }} →
+                        Envio</div>
+                </div>
+                <div class="activity-right">
+                    <div class="activity-valor">R$ {{ "{:,.2f}".format(activity.valor).replace(',', 'X').replace('.',
+                        ',').replace('X', '.') }}</div>
+                    <div class="activity-time">{{ activity.tempo_relativo }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <p>Nenhuma atividade recente</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Acesso Rápido -->
+    <div class="dashboard-section">
+        <h2 class="section-title">Acesso Rápido</h2>
+        <div class="quick-actions">
+            <a href="/propostas/nova" class="quick-action-btn quick-action-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Nova Proposta
+            </a>
+            <a href="/propostas" class="quick-action-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Ver Propostas
+            </a>
+            <a href="/simulacoes" class="quick-action-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Simulações
+            </a>
+        </div>
+
+        <!-- Gráfico de Status -->
+        <div class="chart-container">
+            <h3 class="chart-title">Propostas por Status</h3>
+            <canvas id="statusChart" width="300" height="300"></canvas>
+            <div class="chart-legend">
+                <div class="legend-item">
+                    <span class="legend-color" style="background: #FF8C00;"></span>
+                    <span>Simulação ({{ chart_status.simulacao }})</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background: #3B82F6;"></span>
+                    <span>Cotação ({{ chart_status.cotacao }})</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background: #10B981;"></span>
+                    <span>Envio ({{ chart_status.envio }})</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico de Evolução -->
+<div class="dashboard-section">
+    <h2 class="section-title">Evolução Diária (últimos 7 dias)</h2>
+    <div class="chart-container-full">
+        <canvas id="evolutionChart" height="80"></canvas>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/static/js/dashboard.js?v=2.0"></script>
+<script>
+    // Inject data from backend
+    window.dashboardData = {
+        chartStatus: {{ chart_status | tojson }},
+        chartEvolution: {{ chart_evolution | tojson }}
+    };
+</script>
+{% endblock %}

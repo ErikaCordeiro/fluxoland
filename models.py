@@ -56,6 +56,7 @@ class User(Base):
     nome = Column(String(100), nullable=False)
     email = Column(String(120), unique=True, index=True, nullable=False)
     senha_hash = Column(String(255), nullable=False)
+    telefone = Column(String(20))  # Telefone para notificações WhatsApp (formato: 5547999999999)
 
     role = Column(Enum(UserRole), default=UserRole.usuario, nullable=False)
     ativo = Column(Boolean, default=True)
@@ -389,3 +390,25 @@ class EnvioProposta(Base):
     enviado_em = Column(DateTime)
 
     proposta = relationship("Proposta", back_populates="envio")
+
+
+# ======================================================
+# CONTATOS PARA NOTIFICAÇÃO WHATSAPP
+# ======================================================
+
+class TipoNotificacao(str, enum.Enum):
+    simulacao = "simulacao"  # Recebe quando vai para pendente_simulacao
+    cotacao = "cotacao"      # Recebe quando vai para pendente_cotacao
+
+
+class ContatoNotificacao(Base):
+    """
+    Contatos que recebem notificações WhatsApp.
+    """
+    __tablename__ = "contatos_notificacao"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(100), nullable=False)
+    telefone = Column(String(20), nullable=False)  # Formato: 5547999999999
+    tipo = Column(Enum(TipoNotificacao), nullable=False)
+    ativo = Column(Boolean, default=True)
