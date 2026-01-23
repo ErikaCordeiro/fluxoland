@@ -56,7 +56,7 @@ class User(Base):
     nome = Column(String(100), nullable=False)
     email = Column(String(120), unique=True, index=True, nullable=False)
     senha_hash = Column(String(255), nullable=False)
-    telefone = Column(String(20))  # Telefone para notificações WhatsApp (formato: 5547999999999)
+    # telefone = Column(String(20))  # DESCOMENTAR APÓS MIGRATION: Telefone para notificações WhatsApp (formato: 5547999999999)
 
     role = Column(Enum(UserRole), default=UserRole.usuario, nullable=False)
     ativo = Column(Boolean, default=True)
