@@ -1,59 +1,61 @@
-# 📱 GUIA RÁPIDO: Configurar Notificações WhatsApp (Bot Conversa)
+# 📱 GUIA RÁPIDO: Notificações WhatsApp (BotConversa)
 
-## O QUE FOI IMPLEMENTADO
+## ✅ O QUE FOI IMPLEMENTADO
 
-✅ Sistema de notificações automáticas via WhatsApp usando Bot Conversa
-✅ Interface web para gerenciar contatos que recebem notificações
-✅ Notificações baseadas em mudança de status da proposta
-✅ Campo `telefone` nos vendedores para notificações de envio
-
-## COMO FUNCIONA
-
-### Quando uma proposta muda de status:
-
-1. **PENDENTE_SIMULACAO** → Notifica contatos tipo "Simulação" (cadastrados na interface)
-2. **PENDENTE_COTACAO** → Notifica contatos tipo "Cotação" (cadastrados na interface)
-3. **PENDENTE_ENVIO** → Notifica **Vendedor** responsável (telefone do vendedor)
+- ✅ Sistema de notificações automáticas via WhatsApp usando BotConversa
+- ✅ Interface web para gerenciar contatos que recebem notificações
+- ✅ Notificações baseadas em mudança de status da proposta
+- ✅ 3 tipos de notificação: **Simulação**, **Cotação** e **Envio**
+- ✅ Disparo automático ao importar proposta do Bling
+- ✅ Código profissional com logging e documentação completa
 
 ---
 
-## PASSO A PASSO PARA ATIVAR
+## 🔄 FLUXO AUTOMÁTICO
 
-### 1️⃣ OBTER TOKEN DO BOT CONVERSA
+Quando uma proposta muda de status, o sistema automaticamente:
+
+| Status | Quem Recebe | Quando |
+|--------|-------------|--------|
+| **PENDENTE_SIMULACAO** | Contatos tipo "simulacao" | Ao importar do Bling ou criar proposta |
+| **PENDENTE_COTACAO** | Contatos tipo "cotacao" | Após concluir simulação |
+| **PENDENTE_ENVIO** | Contatos tipo "envio" + Vendedor | Após concluir cotação |
+
+---
+
+## 🚀 CONFIGURAÇÃO INICIAL
+
+### 1️⃣ Obter Token do BotConversa
 
 1. Acesse: https://app.botconversa.com.br/
-2. Faça login na sua conta
-3. Vá em: **Configurações** > **Webhooks** > **Token de Automação**
-4. Copie o token (algo como: `abc123def456...`)
+2. Faça login
+3. Vá em: **Webhooks** > Crie webhook "Automação Kamaban"
+4. Configure:
+   - **Requisições** → `Padrão`
+   - **Ações** → Adicione:
+     - ✅ Telefone WhatsApp: `phone`
+     - ✅ Enviar mensagem: `text`
+5. Copie a URL do webhook (ex: `13954/eHmb0sGpjqpG`)
 
-### 2️⃣ CONFIGURAR .ENV
-
-Adicione ao seu arquivo `.env`:
+### 2️⃣ Configurar .env
 
 ```env
-# WhatsApp - Bot Conversa
-WHATSAPP_BOT_CONVERSA_TOKEN=seu_token_aqui
+WHATSAPP_BOT_CONVERSA_TOKEN=13954/eHmb0sGpjqpG
 ```
 
-**Pronto!** Só isso mesmo. Os números são cadastrados pela interface web.
+### 3️⃣ Atualizar Banco de Dados
 
-### 3️⃣ ATUALIZAR BANCO DE DADOS
-
-Nova tabela `contatos_notificacao` foi criada. Atualize o banco:
-
-**Opção A: Recriar banco (DEV)**
+**Opção A - Desenvolvimento:**
 ```bash
 python create_tables.py
 ```
 
-**Opção B: Rodar migração SQL (PROD)**
+**Opção B - Produção (SQL):**
 ```sql
--- Adiciona telefone aos usuários/vendedores
-ALTER TABLE users ADD COLUMN IF NOT EXISTS telefone VARCHAR(20);
+-- 1. Criar ENUM para tipo de notificação
+CREATE TYPE tiponotificacao AS ENUM ('simulacao', 'cotacao', 'envio');
 
--- Cria tabela de contatos para notificação
-CREATE TYPE tiponotificacao AS ENUM ('simulacao', 'cotacao');
-
+-- 2. Criar tabela de contatos
 CREATE TABLE IF NOT EXISTS contatos_notificacao (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
@@ -61,43 +63,137 @@ CREATE TABLE IF NOT EXISTS contatos_notificacao (
     tipo tiponotificacao NOT NULL,
     ativo BOOLEAN DEFAULT true
 );
+
+-- 3. Adicionar telefone aos usuários (opcional, para notificar vendedores)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS telefone VARCHAR(20);
 ```
 
-### 4️⃣ CADASTRAR CONTATOS VIA INTERFACE WEB
+### 4️⃣ Cadastrar Contatos
 
-1. Acesse: http://localhost:8000/contatos-notificacao
-2. Clique em "+ Novo Contato"
+**Via Interface Web:**
+1. Acesse: `http://localhost:8000/contatos-notificacao`
+2. Clique em **"+ Novo Contato"**
 3. Preencha:
-   - Nome: Ex: "Rafael (Rafa)"
-   - Telefone: Ex: 5547999999999 ou (47) 99999-9999
-   - Tipo: "Simulação" ou "Cotação"
+   - **Nome:** Ex: "Erika SAC"
+   - **Telefone:** `554792848419` (formato: 55 + DDD + número, SEM espaços)
+   - **Tipo:** Escolha entre:
+     - **Simulação** → Recebe quando proposta criada/importada
+     - **Cotação** → Recebe quando simulação concluída
+     - **Envio** → Recebe quando cotação concluída
 4. Salvar
 
-**Pode cadastrar quantos contatos quiser!** Todos do mesmo tipo receberão a mensagem.
+**Pode cadastrar múltiplos contatos do mesmo tipo!**
 
-### 5️⃣ CADASTRAR TELEFONE DOS VENDEDORES
+---
 
-Para que vendedores recebam notificação quando proposta vai para envio:
+## 📋 MENSAGENS ENVIADAS
 
-**Opção A: Script Python**
-```bash
-python update_user_phone.py
+### Simulação
+```
+Nova Proposta #123 - Cliente: JOÃO PEDRO - Valor: R$ 1.285,91 - Aguardando simulação
 ```
 
-**Opção B: SQL direto**
-```sql
-UPDATE users 
-SET telefone = '5547999999999' 
-WHERE email = 'vendedor@email.com';
+### Cotação
+```
+*Proposta #123 - Pronta para Cotação*
+Cliente: JOÃO PEDRO
+Valor: R$ 1.285,91
+Cubagem: 2.5000 m³ | Peso: 150 kg
 ```
 
-### 6️⃣ TESTAR
+### Envio
+```
+*Proposta #123 - Pronta para Envio*
+Cliente: JOÃO PEDRO
+Valor: R$ 1.285,91
+Cotação finalizada, aguardando envio ao cliente
+```
 
-1. Importe uma proposta do Bling
-   → Contatos tipo "Simulação" devem receber 📱
+---
 
-2. Faça simulação e conclua
-   → Contatos tipo "Cotação" devem receber 📱
+## 🧪 TESTAR
+
+### Teste 1: Importação do Bling
+1. Importe proposta do Bling
+2. Contatos tipo **"simulacao"** devem receber WhatsApp
+
+### Teste 2: Mudança de Status
+1. Conclua simulação → Status: `PENDENTE_COTACAO`
+2. Contatos tipo **"cotacao"** devem receber WhatsApp
+
+3. Conclua cotação → Status: `PENDENTE_ENVIO`
+4. Contatos tipo **"envio"** + vendedor devem receber WhatsApp
+
+---
+
+## 🔧 SOLUÇÃO DE PROBLEMAS
+
+### Mensagens não estão chegando?
+
+1. **Verifique o token no .env:**
+   ```bash
+   cat .env | grep WHATSAPP
+   ```
+
+2. **Verifique webhook no BotConversa:**
+   - Deve estar ATIVO
+   - "Modo Teste" deve estar DESLIGADO
+   - Ações devem estar configuradas (`phone` e `text`)
+
+3. **Verifique contatos cadastrados:**
+   - Acesse `/contatos-notificacao`
+   - Contatos devem estar marcados como "Ativo"
+   - Telefone formato correto: `554792848419` (sem espaços/caracteres)
+
+4. **Verifique logs do servidor:**
+   ```bash
+   # Procure por erros WhatsApp
+   tail -f logs/app.log
+   ```
+
+### Formato de telefone incorreto?
+
+✅ **Correto:** `554792848419` (55 + DDD + número)
+❌ **Errado:** `+55 47 9284-8419` (com espaços/símbolos)
+❌ **Errado:** `47 92848419` (falta código do país)
+
+---
+
+## 📁 ARQUIVOS RELACIONADOS
+
+- `services/whatsapp_service.py` - Serviço principal
+- `services/proposta_service.py` - Dispara notificações ao mudar status
+- `services/bling_import_service.py` - Dispara notificação ao importar
+- `routers/contatos_notificacao.py` - Interface web de gerenciamento
+- `models.py` - Modelo `ContatoNotificacao` e enum `TipoNotificacao`
+
+---
+
+## 🎯 RESUMO TÉCNICO
+
+**Arquitetura:**
+```
+Bling Import/Status Change
+    ↓
+PropostaService._atualizar_status()
+    ↓
+WhatsAppService.enviar_notificacao_mudanca_status()
+    ↓
+HTTP POST → BotConversa Webhook
+    ↓
+WhatsApp User 📱
+```
+
+**Stack:**
+- BotConversa Webhook (POST)
+- SQLAlchemy (PostgreSQL)
+- FastAPI
+- Python requests
+
+---
+
+**Última atualização:** 27/01/2026
+**Status:** ✅ Funcionando em produção
 
 3. Salve cotação
    → Vendedor responsável deve receber 📱

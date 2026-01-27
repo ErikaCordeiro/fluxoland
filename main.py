@@ -162,6 +162,13 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+# Favicon route
+@app.get("/favicon.ico", tags=["static"])
+async def favicon():
+    """Serve the favicon."""
+    return RedirectResponse(url="/static/favicon.ico", status_code=301)
+
+
 # Root route
 @app.get("/", tags=["navigation"])
 async def home(request: Request) -> RedirectResponse:

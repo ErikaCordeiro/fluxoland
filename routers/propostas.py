@@ -810,15 +810,28 @@ def enviar_proposta(
     if not proposta:
         return RedirectResponse("/propostas", HTTP_303_SEE_OTHER)
 
-    # Criar registro de envio
-    envio = EnvioProposta(
-        proposta_id=proposta.id,
-        resumo_envio="Proposta enviada ao cliente",
-        meio_envio="WhatsApp/E-mail",
-        enviado=True,
-        enviado_em=datetime.utcnow(),
-    )
-    db.add(envio)
+    # Verificar se já existe um registro de envio
+    envio_existente = db.query(EnvioProposta).filter(
+        EnvioProposta.proposta_id == proposta.id
+    ).first()
+    
+    if envio_existente:
+        # Atualizar registro existente
+        envio_existente.resumo_envio = "Proposta enviada ao cliente"
+        envio_existente.meio_envio = "WhatsApp/E-mail"
+        envio_existente.enviado = True
+        envio_existente.enviado_em = datetime.utcnow()
+    else:
+        # Criar novo registro de envio
+        envio = EnvioProposta(
+            proposta_id=proposta.id,
+            resumo_envio="Proposta enviada ao cliente",
+            meio_envio="WhatsApp/E-mail",
+            enviado=True,
+            enviado_em=datetime.utcnow(),
+        )
+        db.add(envio)
+    
     db.flush()
 
     # Atualizar timestamp

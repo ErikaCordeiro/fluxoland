@@ -145,8 +145,11 @@ class BlingParserService:
         if not vendedor or len(vendedor.strip()) < 2:
             vendedor = BlingParserService._buscar_linha_apos(texto, "Vendedor", 0)
             if vendedor:
-                # Remove a palavra "Vendedor:" se vier junto
+                # Remove a palavra "Vendedor:" se vier junto e prefixos como "(a):"
                 vendedor = vendedor.replace("Vendedor:", "").replace("Vendedor", "").strip()
+                # Remove prefixos do tipo "(a): NOME" -> "NOME"
+                if vendedor.startswith("(a):") or vendedor.startswith("(a):"):
+                    vendedor = vendedor.split(":", 1)[-1].strip()
 
         # Extrai valores da tabela de totais
         # A tabela tem 8 colunas na ordem:

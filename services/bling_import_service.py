@@ -366,17 +366,35 @@ class BlingImportService:
         # ==================================================
         # monta observação incluindo número e vendedor do Bling quando disponível
         obs = observacao or ""
+        vendedor_bling_nome = None
+        vendedor_bling_telefone = None
+        
         if pedido and pedido.get("numero"):
             obs = f"bling_numero:{pedido.get('numero')}; {obs}".strip()
         if pedido and pedido.get("vendedor"):
-            vendedor_bling = pedido.get("vendedor")
-            obs = f"bling_vendedor:{vendedor_bling}; {obs}".strip()
+            vendedor_bling_nome = pedido.get("vendedor")
+            obs = f"bling_vendedor:{vendedor_bling_nome}; {obs}".strip()
+            # Mapeamento de vendedores Bling para seus telefones (dados da lista de vendedores)
+            mapeamento_vendedores = {
+                "AMARILDO MONTIBELER": "5547991316330",
+                "ANDERSON ADAMI": "5547992277405",
+                "CARLOS HENRIQUE GUIMARAES DELUCHI": "5547991022964",
+                "JOÃO PEDRO DE SOUZA": "5547992268504",
+                "LUCAS DOGNINI SOARES": "5547991707963",
+                "MARCOS LUIS DA CONCEIÇÃO": "554791917906",
+                "RODRIGO BOAVENTURA": "5547991791978",
+                "TARNIE RICARDO MONTIBELER": "5547991917907",
+                "VICTOR HUGO DE MELLO": "5547991695494",
+            }
+            vendedor_bling_telefone = mapeamento_vendedores.get(vendedor_bling_nome.upper())
 
         proposta = Proposta(
             origem=PropostaOrigem.bling,
             id_bling=id_bling,
             cliente_id=cliente_db.id,
             vendedor_id=vendedor_id,
+            responsavel_vendedor=vendedor_bling_nome,
+            responsavel_telefone=vendedor_bling_telefone,
             observacao_importacao=obs,
             status=PropostaStatus.pendente_simulacao,
             desconto=pedido.get("desconto") if pedido else None,
@@ -476,7 +494,9 @@ class BlingImportService:
         # ==================================================
         # 5. COPIA SIMULAÇÃO DA PROPOSTA ANTERIOR (SE ENCONTROU)
         # ==================================================
+        print(f"\n[DEBUG BLING] Caminho 5 - Proposta {proposta.id} com referência: {bool(simulacao_referencia and proposta_referencia)}")
         if simulacao_referencia and proposta_referencia:
+            print(f"[DEBUG BLING]   → Copiando simulação da proposta #{proposta_referencia.id}")
             # Copia a simulação da proposta anterior
             nova_simulacao = Simulacao(
                 proposta_id=proposta.id,
@@ -496,13 +516,16 @@ class BlingImportService:
                 proposta=proposta,
                 novo_status=PropostaStatus.pendente_cotacao,
                 observacao=f"Simulação copiada da proposta #{proposta_referencia.id} (mesmos produtos)",
+                forcar_notificacao=True,
             )
         else:
             # Sem proposta de referência - verifica se produtos têm medidas cadastradas
+            print(f"[DEBUG BLING] Caminho 6 - Proposta {proposta.id} sem referência")
             produtos_com_medidas_completas = all(
                 item.produto and item.produto.possui_medidas_completas()
                 for item in proposta.itens
             )
+            print(f"[DEBUG BLING]   → Tem medidas completas: {produtos_com_medidas_completas}")
             
             if produtos_com_medidas_completas and len(proposta.itens) > 0:
                 # Calcula cubagem total baseado nas medidas dos produtos
@@ -542,28 +565,34 @@ class BlingImportService:
                     proposta.cubagem_m3 = round(cubagem_m3, 4)
                     proposta.cubagem_ajustada = False
                     
+                    print(f"[DEBUG BLING]     → Tem cubagem, indo para cotação (m³: {cubagem_m3})")
                     # Avança direto para COTAÇÃO
                     PropostaService._atualizar_status(
                         db=db,
                         proposta=proposta,
                         novo_status=PropostaStatus.pendente_cotacao,
                         observacao="Proposta importada do Bling - simulação criada automaticamente (produtos com medidas conhecidas)",
+                        forcar_notificacao=True,
                     )
                 else:
                     # Tem produtos mas não conseguiu calcular cubagem
+                    print(f"[DEBUG BLING]     → Sem cubagem, indo para simulação")
                     PropostaService._atualizar_status(
                         db=db,
                         proposta=proposta,
                         novo_status=PropostaStatus.pendente_simulacao,
                         observacao="Proposta importada automaticamente do Bling",
+                        forcar_notificacao=True,
                     )
             else:
                 # Sem medidas conhecidas, vai para simulação manual
+                print(f"[DEBUG BLING]   → Sem medidas, indo para simulação")
                 PropostaService._atualizar_status(
                     db=db,
                     proposta=proposta,
                     novo_status=PropostaStatus.pendente_simulacao,
                     observacao="Proposta importada automaticamente do Bling",
+                    forcar_notificacao=True,
                 )
 
         db.commit()

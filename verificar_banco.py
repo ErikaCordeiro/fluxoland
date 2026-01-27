@@ -90,9 +90,11 @@ def verificar_enums():
         # Testa TipoNotificacao (novo)
         try:
             db.execute(text("SELECT 'simulacao'::tiponotificacao"))
-            print("✅ TipoNotificacao enum OK")
+            db.execute(text("SELECT 'cotacao'::tiponotificacao"))
+            db.execute(text("SELECT 'envio'::tiponotificacao"))
+            print("✅ TipoNotificacao enum OK (simulacao/cotacao/envio)")
         except Exception as e:
-            print(f"❌ TipoNotificacao enum - FALTANDO (será criado na migration)")
+            print("❌ TipoNotificacao enum - FALTANDO (rode migrations/add_dashboard_and_whatsapp.sql e migrations/add_tiponotificacao_envio.sql)")
         
         return True
     except Exception as e:

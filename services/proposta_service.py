@@ -154,8 +154,10 @@ class PropostaService:
         proposta: Proposta,
         novo_status: PropostaStatus,
         observacao: str = "",
+        forcar_notificacao: bool = False,
     ):
-        if proposta.status == novo_status:
+        # Evita notificar se status não mudou, a menos que explicitamente forçado
+        if proposta.status == novo_status and not forcar_notificacao:
             return
 
         proposta.status = novo_status
@@ -171,11 +173,15 @@ class PropostaService:
         db.commit()
         
         # Envia notificação WhatsApp após commit
+        print(f"\n[INFO] Tentando enviar WhatsApp para status: {novo_status}")
         try:
             from services.whatsapp_service import WhatsAppService
-            WhatsAppService.enviar_notificacao_mudanca_status(db, proposta, novo_status)
+            resultado = WhatsAppService.enviar_notificacao_mudanca_status(db, proposta, novo_status)
+            print(f"[INFO] Resultado: {'Sucesso' if resultado else 'Falhou'}")
         except Exception as e:
-            print(f"⚠️ Erro ao enviar notificação WhatsApp: {e}")
+            print(f"[ERRO] Erro ao enviar notificação WhatsApp: {e}")
+            import traceback
+            traceback.print_exc()
 
     @staticmethod
     def _registrar_historico(

@@ -1,6 +1,6 @@
 # FluxoLand 🚀
 
-Sistema de gestão de propostas comerciais com integração Bling, simulação de volumes e cotação de frete.
+Sistema de gestão de propostas comerciais com integração Bling, simulação de volumes, cotação de frete e **notificações automáticas via WhatsApp**.
 
 ## 📋 Funcionalidades
 
@@ -23,6 +23,14 @@ Sistema de gestão de propostas comerciais com integração Bling, simulação d
 - **Prazo e valor** de cada transportadora
 - **Resumo formatado** para envio ao cliente
 
+### 📱 Notificações WhatsApp (NOVO!)
+- **Notificação automática** ao importar proposta do Bling
+- **3 tipos de notificação**: Simulação, Cotação e Envio
+- **Múltiplos contatos** por tipo de notificação
+- **Integração BotConversa** via webhook
+- **Interface web** para gerenciar contatos
+- 📖 [Guia completo de configuração](WHATSAPP_GUIA_RAPIDO.md)
+
 ### 🔗 Integração Bling
 - Importação de dados completos do pedido
 - Extração de valores financeiros (itens, desconto, frete)
@@ -36,6 +44,7 @@ Sistema de gestão de propostas comerciais com integração Bling, simulação d
 - **Templates**: Jinja2
 - **Frontend**: HTML5, CSS3, JavaScript
 - **Parsing**: BeautifulSoup4
+- **WhatsApp**: BotConversa API
 
 ## 🚀 Como Rodar
 
@@ -48,6 +57,7 @@ pip install -r requirements.txt
 Crie um arquivo `.env` na raiz:
 ```env
 SESSION_SECRET_KEY=seu-secret-key-aqui
+WHATSAPP_BOT_CONVERSA_TOKEN=seu-token-botconversa
 DATABASE_URL=postgresql://usuario:senha@localhost:5432/fluxoland
 ```
 

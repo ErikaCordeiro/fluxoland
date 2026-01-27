@@ -47,6 +47,11 @@
                         style="background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
                         💰 Cotação
                     </span>
+                    {% elif contato.tipo.value == "envio" %}
+                    <span
+                        style="background: #ecfdf3; color: #15803d; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                        📤 Envio
+                    </span>
                     {% endif %}
                 </td>
                 <td>
@@ -86,8 +91,8 @@
     <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #374151; line-height: 1.6;">
         <li><strong>Simulação:</strong> Recebe quando proposta vai para <em>Pendente Simulação</em></li>
         <li><strong>Cotação:</strong> Recebe quando proposta vai para <em>Pendente Cotação</em></li>
-        <li><strong>Vendedores:</strong> Recebem automaticamente quando proposta vai para <em>Pendente Envio</em>
-            (configure telefone em Vendedores)</li>
+        <li><strong>Envio:</strong> Recebe quando proposta vai para <em>Pendente Envio</em> (use contatos ou o
+            telefone do vendedor)</li>
     </ul>
 </div>
 
@@ -116,6 +121,7 @@
                     <option value="">Selecione...</option>
                     <option value="simulacao">📦 Simulação</option>
                     <option value="cotacao">💰 Cotação</option>
+                    <option value="envio">📤 Envio</option>
                 </select>
             </div>
 
@@ -155,6 +161,7 @@
                 <select name="tipo" id="editTipo" required>
                     <option value="simulacao">📦 Simulação</option>
                     <option value="cotacao">💰 Cotação</option>
+                    <option value="envio">📤 Envio</option>
                 </select>
             </div>
 

@@ -152,6 +152,10 @@ class Proposta(Base):
     vendedor_id = Column(Integer, ForeignKey("users.id"))
     vendedor = relationship("User", back_populates="propostas")
 
+    # VENDEDOR RESPONSÁVEL (para notificações de envio)
+    responsavel_vendedor = Column(String(200))  # Nome do vendedor responsável
+    responsavel_telefone = Column(String(20))   # Telefone do vendedor responsável
+
     # CÁLCULOS
     peso_total_kg = Column(Float)
     comprimento_total_cm = Column(Float)
@@ -399,6 +403,7 @@ class EnvioProposta(Base):
 class TipoNotificacao(str, enum.Enum):
     simulacao = "simulacao"  # Recebe quando vai para pendente_simulacao
     cotacao = "cotacao"      # Recebe quando vai para pendente_cotacao
+    envio = "envio"          # Recebe quando vai para pendente_envio
 
 
 class ContatoNotificacao(Base):
