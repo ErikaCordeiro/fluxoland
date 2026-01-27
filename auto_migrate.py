@@ -36,6 +36,21 @@ def verificar_e_executar_migrations():
             db.execute(text("CREATE TYPE tiponotificacao AS ENUM ('simulacao', 'cotacao', 'envio')"))
             db.commit()
             logger.info("✅ Enum tiponotificacao criado")
+        else:
+            # Verificar se valor 'envio' existe no enum
+            envio_exists = db.execute(text("""
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_enum 
+                    WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'tiponotificacao')
+                    AND enumlabel = 'envio'
+                )
+            """)).scalar()
+            
+            if not envio_exists:
+                logger.info("🔧 Executando migration: adicionando valor 'envio' ao enum tiponotificacao")
+                db.execute(text("ALTER TYPE tiponotificacao ADD VALUE 'envio'"))
+                db.commit()
+                logger.info("✅ Valor 'envio' adicionado ao enum tiponotificacao")
         
         # Verificar se tabela contatos_notificacao existe
         if 'contatos_notificacao' not in inspector.get_table_names():
@@ -55,6 +70,21 @@ def verificar_e_executar_migrations():
             db.execute(text("CREATE INDEX idx_contatos_notificacao_ativo ON contatos_notificacao(ativo)"))
             db.commit()
             logger.info("✅ Tabela contatos_notificacao criada")
+        
+        # Verificar se colunas responsavel_vendedor e responsavel_telefone existem em propostas
+        propostas_columns = [col['name'] for col in inspector.get_columns('propostas')]
+        
+        if 'responsavel_vendedor' not in propostas_columns:
+            logger.info("🔧 Executando migration: adicionando coluna propostas.responsavel_vendedor")
+            db.execute(text("ALTER TABLE propostas ADD COLUMN responsavel_vendedor VARCHAR(200)"))
+            db.commit()
+            logger.info("✅ Coluna propostas.responsavel_vendedor criada")
+        
+        if 'responsavel_telefone' not in propostas_columns:
+            logger.info("🔧 Executando migration: adicionando coluna propostas.responsavel_telefone")
+            db.execute(text("ALTER TABLE propostas ADD COLUMN responsavel_telefone VARCHAR(20)"))
+            db.commit()
+            logger.info("✅ Coluna propostas.responsavel_telefone criada")
         
         db.close()
         logger.info("🎉 Migrations concluídas com sucesso!")
