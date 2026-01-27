@@ -55,16 +55,22 @@ class WhatsAppService:
         # Para pendente_envio, notifica APENAS o vendedor responsável da proposta
         if novo_status == PropostaStatus.pendente_envio:
             if not proposta.responsavel_telefone:
-                logger.warning(f"⚠️ Proposta {proposta.id} sem vendedor responsável - notificação de envio não será enviada")
+                msg = f"⚠️ Proposta {proposta.id} sem vendedor responsável - notificação de envio não será enviada"
+                logger.warning(msg)
+                print(f"[WHATSAPP] Proposta {proposta.id} sem vendedor responsavel")
                 return False
             
             telefones = [proposta.responsavel_telefone]
-            logger.info(f"📤 Enviando notificação de ENVIO para vendedor: {proposta.responsavel_telefone}")
+            msg = f"📤 Enviando notificação de ENVIO para vendedor: {proposta.responsavel_telefone}"
+            logger.info(msg)
+            print(f"[WHATSAPP] Notificacao ENVIO para: {proposta.responsavel_telefone}")
         else:
             # Para outros status, obtém contatos cadastrados no tipo de notificação
             tipo_notificacao = WhatsAppService.STATUS_TIPO_NOTIFICACAO.get(novo_status)
             if not tipo_notificacao:
-                logger.warning(f"⚠️ Nenhuma notificação configurada para status {novo_status}")
+                msg = f"⚠️ Nenhuma notificação configurada para status {novo_status}"
+                logger.warning(msg)
+                print(f"[WHATSAPP] Nenhuma notificacao configurada para status {novo_status}")
                 return False
 
             contatos = db.query(ContatoNotificacao).filter(
@@ -73,19 +79,27 @@ class WhatsAppService:
             ).all()
 
             telefones = [c.telefone for c in contatos]
-            logger.info(f"📋 Encontrados {len(contatos)} contatos para tipo {tipo_notificacao}: {[c.nome for c in contatos]}")
+            msg = f"📋 Encontrados {len(contatos)} contatos para tipo {tipo_notificacao}: {[c.nome for c in contatos]}"
+            logger.info(msg)
+            print(f"[WHATSAPP] Encontrados {len(contatos)} contatos para {tipo_notificacao}: {[c.nome for c in contatos]}")
             
             if not telefones:
-                logger.warning(f"⚠️ Nenhum contato ativo para notificação tipo {tipo_notificacao}")
+                msg = f"⚠️ Nenhum contato ativo para notificação tipo {tipo_notificacao}"
+                logger.warning(msg)
+                print(f"[WHATSAPP] Nenhum contato ativo para {tipo_notificacao}")
                 return False
 
         # Gera mensagem
         mensagem = WhatsAppService._gerar_mensagem(novo_status, proposta)
         if not mensagem:
-            logger.error(f"❌ Falha ao gerar mensagem para status {novo_status}")
+            msg = f"❌ Falha ao gerar mensagem para status {novo_status}"
+            logger.error(msg)
+            print(f"[WHATSAPP] ERRO: Falha ao gerar mensagem")
             return False
 
-        logger.info(f"📨 Enviando mensagem para {len(telefones)} telefone(s): {telefones}")
+        msg = f"📨 Enviando mensagem para {len(telefones)} telefone(s): {telefones}"
+        logger.info(msg)
+        print(f"[WHATSAPP] Enviando para {len(telefones)} telefone(s): {telefones}")
         
         # Envia para todos os contatos
         resultados = [
@@ -95,10 +109,16 @@ class WhatsAppService:
         
         sucesso = all(resultados)
         if sucesso:
-            logger.info(f"✅ Todas as {len(telefones)} mensagens enviadas com sucesso")
+            msg = f"✅ Todas as {len(telefones)} mensagens enviadas com sucesso"
+            logger.info(msg)
+            print(f"[WHATSAPP] SUCESSO: Todas as {len(telefones)} mensagens enviadas")
         else:
             falhas = sum(1 for r in resultados if not r)
-            logger.error(f"❌ {falhas} de {len(telefones)} mensagens falharam")
+            msg = f"❌ {falhas} de {len(telefones)} mensagens falharam"
+            logger.error(msg)
+            print(f"[WHATSAPP] ERRO: {falhas} de {len(telefones)} falharam")
+        
+        return sucesso
         
         return sucesso
     
@@ -154,16 +174,25 @@ class WhatsAppService:
             url = f"https://new-backend.botconversa.com.br/api/v1/webhooks-automation/catch/{bot_token}/"
             payload = {"phone": telefone, "text": mensagem}
             
-            logger.info(f"🔄 Enviando para BotConversa: {telefone}")
+            msg = f"🔄 Enviando para BotConversa: {telefone}"
+            logger.info(msg)
+            print(f"[WHATSAPP] >> Enviando para {telefone}")
+            
             response = requests.post(url, json=payload, timeout=10)
             
             if response.status_code in [200, 201, 204]:
-                logger.info(f"✅ WhatsApp enviado com sucesso para {telefone} (status {response.status_code})")
+                msg = f"✅ WhatsApp enviado com sucesso para {telefone} (status {response.status_code})"
+                logger.info(msg)
+                print(f"[WHATSAPP] >> OK {telefone} (HTTP {response.status_code})")
                 return True
             
-            logger.error(f"❌ Falha ao enviar WhatsApp para {telefone}: HTTP {response.status_code} - {response.text}")
+            msg = f"❌ Falha ao enviar WhatsApp para {telefone}: HTTP {response.status_code} - {response.text}"
+            logger.error(msg)
+            print(f"[WHATSAPP] >> FALHA {telefone}: HTTP {response.status_code}")
             return False
                 
         except Exception as e:
-            logger.exception(f"❌ Erro ao enviar WhatsApp para {telefone}: {e}")
+            msg = f"❌ Erro ao enviar WhatsApp para {telefone}: {e}"
+            logger.exception(msg)
+            print(f"[WHATSAPP] >> ERRO {telefone}: {e}")
             return False
