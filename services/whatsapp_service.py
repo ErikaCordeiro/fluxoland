@@ -45,11 +45,18 @@ class WhatsAppService:
         Returns:
             True se mensagem foi enviada, False caso contrário
         """
+        print(f"[WHATSAPP] ===== NOTIFICACAO INICIADA =====")
+        print(f"[WHATSAPP] Proposta ID: {proposta.id}, Status: {novo_status}")
+        logger.info(f"Iniciando notificacao para proposta {proposta.id} -> status {novo_status}")
+        
         load_dotenv()
         bot_token = os.getenv("WHATSAPP_BOT_CONVERSA_TOKEN")
         
         if not bot_token:
-            logger.error("WHATSAPP_BOT_CONVERSA_TOKEN não configurado em .env")
+            msg = "ERRO CRITICO: WHATSAPP_BOT_CONVERSA_TOKEN nao configurado em .env ou variavel de ambiente"
+            logger.error(msg)
+            print(f"[WHATSAPP] {msg}")
+            print(f"[WHATSAPP] Variaveis disponiveis: {list(os.environ.keys())}")
             return False
 
         # Para pendente_envio, notifica APENAS o vendedor responsável da proposta
