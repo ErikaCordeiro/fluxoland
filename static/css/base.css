@@ -7,6 +7,11 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Garante que o atributo HTML `hidden` funcione mesmo com CSS customizado */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif;
