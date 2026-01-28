@@ -9,10 +9,20 @@ Scripts para atualizar o esquema do banco de dados em produção.
 3. Clique em "Shell" (no menu lateral)
 4. Execute o comando:
 
+Exemplo executando um script SQL (no shell do Render):
+
 ```bash
-python migrations/add_numero_cotacao.py
+psql "$DATABASE_URL" -f migrations/add_dashboard_and_whatsapp.sql
+```
+
+Se preferir, você também pode executar checagens/migrations simples via:
+
+```bash
+python auto_migrate.py
 ```
 
 ## Migrations disponíveis
 
-- `add_numero_cotacao.py` - Adiciona coluna numero_cotacao na tabela cotacoes_frete
+- `add_dashboard_and_whatsapp.sql`
+- `add_responsavel_vendedor.sql`
+- `add_tiponotificacao_envio.sql`

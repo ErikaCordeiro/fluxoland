@@ -116,17 +116,15 @@ fluxoland/
 4. **Enviar proposta** ao cliente
 5. **Acompanhar** pelo kanban
 
-## 🗃️ Migrações Disponíveis
+## 🗃️ Migrações / Atualizações de Banco
 
-As migrações executadas incluem:
-- `add_desconto_propostas.py` - Campo de desconto
-- `add_numero_cotacao.py` - Número de cotação
-- `add_atualizado_em.py` - Timestamp de atualização
-- `add_simulacao_automatica.py` - Flag de simulação automática
+- Em desenvolvimento, as tabelas podem ser criadas com `python create_tables.py`.
+- Em produção, o repositório inclui scripts SQL em `migrations/`.
+- Para ambientes com shell limitado (ex.: Render), existe o script `auto_migrate.py` para checagens/migrations simples.
 
-Para executar uma migração:
+Exemplo (SQL):
 ```bash
-python migrations/nome_da_migracao.py
+psql -d fluxoland -f migrations/add_dashboard_and_whatsapp.sql
 ```
 
 ## 📊 Modelos Principais
@@ -147,6 +145,7 @@ python migrations/nome_da_migracao.py
 - Formulários intuitivos para simulação
 - Resumo completo para envio ao cliente
 - Histórico de alterações
+- **Mobile (celular)**: menu hambúrguer com drawer lateral e modais ajustados para tela pequena
 
 ## 📝 Regras de Negócio
 

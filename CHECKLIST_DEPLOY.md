@@ -28,8 +28,14 @@
 - [x] `auth.py` - Redirect login para /dashboard
 - [x] `templates/base.html` - Logo aponta para /dashboard
 - [x] `static/css/base.css` - Container 100% width
+- [x] `static/css/base.css` - Regra global `[hidden] { display: none !important; }` (drawer mobile)
 - [x] `models.py` - Campo telefone e tabela ContatoNotificacao
 - [x] `services/proposta_service.py` - Notificação WhatsApp
+
+### ✅ Ajustes Recentes (UI/Gráficos)
+- [x] Menu mobile com hambúrguer + drawer (abre só ao clicar e fecha no X/fora/ESC)
+- [x] Correção de JS do dashboard: `window.dashboardData` com sintaxe válida
+- [x] Cache-buster de CSS/JS atualizado para evitar “ficar preso” no cache do celular
 
 ### ✅ Código Otimizado
 - [x] Docstrings verbosas removidas
@@ -94,6 +100,10 @@ sudo systemctl restart fluxoland
 - [ ] Verificar gráficos renderizando
 - [ ] Testar responsividade (mobile)
 - [ ] Verificar contatos notificação (se configurado)
+
+Observações:
+- Os gráficos usam Chart.js via CDN; se a rede bloquear `cdn.jsdelivr.net`, os gráficos não renderizam.
+- Se o menu hambúrguer não atualizar no celular, limpar cache do site ou forçar reload (por conta de cache de CSS/JS).
 
 ## 📊 RESUMO DO QUE FOI FEITO
 

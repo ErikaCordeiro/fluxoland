@@ -40,6 +40,7 @@ Automatizar e centralizar o fluxo de trabalho de propostas comerciais, integrand
 - ✅ **Integração automática** com o Bling ERP
 - ✅ **Simulação inteligente** de volumes com reaproveitamento de dados
 - ✅ **Interface visual** tipo Kanban para acompanhamento
+- ✅ **Responsivo no celular**, com menu hambúrguer (drawer) e modais ajustados
 
 ---
 
@@ -164,10 +165,10 @@ Automatizar e centralizar o fluxo de trabalho de propostas comerciais, integrand
 ### Stack Tecnológica
 
 **Backend:**
-- **Python 3.13**
+- **Python 3.11+**
 - **FastAPI** - Framework web moderno e rápido
 - **SQLAlchemy** - ORM para banco de dados
-- **SQLite** - Banco de dados (produção deve migrar para PostgreSQL)
+- **PostgreSQL** (recomendado em produção) / **SQLite** (opcional em dev) — definido via `DATABASE_URL`
 - **Uvicorn** - Servidor ASGI
 
 **Frontend:**
@@ -316,8 +317,8 @@ fluxoland/
 ### Login
 
 1. Acesse: `https://fluxoland-api.onrender.com`
-2. Digite email: `sac@amferramentas.com.br`
-3. Digite senha: `AmF123`
+2. Digite o email do usuário criado (ex.: via `python create_admin.py`)
+3. Digite a senha definida na criação do usuário
 4. Clique em "Entrar"
 
 ### Importar Proposta do Bling
@@ -419,7 +420,7 @@ fluxoland/
 ### Ambiente Local
 
 **Requisitos:**
-- Python 3.13+
+- Python 3.11+
 - Git
 
 **Instalação:**
@@ -461,14 +462,14 @@ python main.py
 
 **Limitações do Plano Free:**
 - Serviço "dorme" após inatividade (delay de 50s no primeiro acesso)
-- Disco efêmero (dados do SQLite podem ser perdidos em reinicializações)
+- Disco efêmero (se estiver usando **SQLite em arquivo**, os dados podem ser perdidos em reinicializações)
 - 750 horas/mês de runtime
 
 **URL Produção:**
 `https://fluxoland-api.onrender.com`
 
 **Recomendação para Produção:**
-Migrar para PostgreSQL para persistência de dados.
+Usar PostgreSQL (definir `DATABASE_URL`) e habilitar backups do banco.
 
 ---
 
@@ -476,14 +477,14 @@ Migrar para PostgreSQL para persistência de dados.
 
 ### Usuário Admin Padrão
 
-**Criação Automática:**
-- Email: `sac@amferramentas.com.br`
-- Senha: `AmF123`
-- Criado automaticamente se não existir nenhum usuário
+**Criação:**
+- Em desenvolvimento, crie um usuário admin pelo script interativo:
 
-**Como Alterar:**
-- Editar código em `main.py` (linhas 30-50)
-- Fazer commit e push
+```bash
+python create_admin.py
+```
+
+- Em produção, crie o admin uma vez e guarde as credenciais fora do repositório.
 
 ### Atualizar Código
 
@@ -502,13 +503,12 @@ git push
 
 ### Backup de Dados
 
-**SQLite (Atual):**
-- Baixar arquivo `fluxoland.db` quando possível
-- **ATENÇÃO:** Plano Free pode perder dados
+**Se estiver usando SQLite (arquivo):**
+- Fazer backup do arquivo (ex.: `fluxoland.db`), quando aplicável.
 
-**Recomendação:**
-- Migrar para PostgreSQL no Render
-- Configurar backups automáticos
+**Se estiver usando PostgreSQL:**
+- Configurar backups automáticos no provedor.
+- Usar `pg_dump` em rotinas de backup, se necessário.
 
 ### Logs e Monitoramento
 
@@ -571,11 +571,11 @@ git push
 
 ### 🔴 ALTA PRIORIDADE
 
-**1. Migração para PostgreSQL**
-- **Motivo:** Persistência de dados em produção
-- **Benefício:** Dados seguros mesmo com reinicializações
-- **Estimativa:** 4-8 horas
-- **Status:** 🔴 Pendente
+**1. Backups/Rotina de manutenção do PostgreSQL**
+- **Motivo:** Garantir retenção e recuperação de dados
+- **Benefício:** Menos risco operacional
+- **Estimativa:** 2-4 horas
+- **Status:** 🟡 Pendente
 
 **2. Gestão de Usuários**
 - **Funcionalidade:** CRUD completo de usuários
@@ -588,8 +588,7 @@ git push
 - **Métricas:** Total de propostas, conversão, valores
 - **Gráficos:** Evolução temporal, distribuição de status
 - **Filtros:** Por período, vendedor, status
-- **Estimativa:** 8-12 horas
-- **Status:** 🔴 Pendente
+- **Status:** ✅ Implementado (base)
 
 ---
 
