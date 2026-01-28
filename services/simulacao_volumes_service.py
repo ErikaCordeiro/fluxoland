@@ -11,6 +11,7 @@ from models import (
 )
 
 from services.proposta_service import PropostaService
+from utils.medidas import format_dimensoes_m
 
 
 class SimulacaoVolumesService:
@@ -69,7 +70,7 @@ class SimulacaoVolumesService:
 
             descricao_linhas.append(
                 f"{quantidade}x {caixa.nome} "
-                f"({caixa.comprimento_cm}x{caixa.largura_cm}x{caixa.altura_cm} cm)"
+                f"({format_dimensoes_m(caixa.comprimento_cm, caixa.largura_cm, caixa.altura_cm)})"
             )
 
         if volume_total_cm3 <= 0:

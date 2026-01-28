@@ -16,8 +16,8 @@
 /* ============================= */
 .modal-content {
     background: #ffffff;
-    width: 1000px;
-    max-width: 75%;
+    width: min(1000px, calc(100vw - 32px));
+    max-width: 1000px;
     max-height: 95vh;
     border-radius: 8px;
     display: flex;

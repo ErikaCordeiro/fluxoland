@@ -16,6 +16,7 @@
   <h2>Lista de Caixas</h2>
 
   {% if caixas %}
+    <div class="table-wrap">
     <table class="table">
       <thead>
         <tr>
@@ -48,6 +49,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% else %}
     <p>Nenhuma caixa cadastrada.</p>
   {% endif %}

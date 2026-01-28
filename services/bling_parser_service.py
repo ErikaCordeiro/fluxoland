@@ -106,13 +106,63 @@ class BlingParserService:
         # ESTRATÉGIA: Buscar seção "Para:" ou "Destinatário" (evitando "De:" / "Remetente" que é a AM Ferramentas)
         # Extrair bloco de texto após a palavra-chave e processar as linhas sequenciais
         
-        nome = None
-        documento = None
-        endereco = None
-        cidade = None
+        nome: str | None = None
+        documento: str | None = None
+        endereco: str | None = None
+        cidade: str | None = None
+        telefone: str | None = None
+        email: str | None = None
+
+        def _is_doc_line(line: str) -> bool:
+            return bool(re.search(r"\b(CNPJ|CPF)\b", line or "", flags=re.IGNORECASE))
+
+        def _is_phone_line(line: str) -> bool:
+            return bool(re.search(r"\b(fone|telefone|celular|contato)\b", line or "", flags=re.IGNORECASE))
+
+        def _extract_email_from_text(t: str) -> str | None:
+            m = re.search(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", t or "", flags=re.IGNORECASE)
+            return m.group(0).strip() if m else None
+
+        def _looks_like_address(line: str) -> bool:
+            l = (line or "").strip()
+            if not l:
+                return False
+            if _is_phone_line(l) or _is_doc_line(l) or "@" in l:
+                return False
+            # padrões comuns de logradouro + presença de número
+            if re.search(
+                r"\b(r\.?|rua|av\.?|avenida|trav\.?|travessa|rod\.?|rodovia|estr\.?|estrada|alameda)\b",
+                l,
+                flags=re.IGNORECASE,
+            ) and re.search(r"\d", l):
+                return True
+            # fallback: tem vírgula e número (ex: '..., 225, centro')
+            if "," in l and re.search(r"\d", l):
+                return True
+            return False
+
+        def _looks_like_city(line: str) -> bool:
+            l = (line or "").strip()
+            if not l:
+                return False
+            if _is_phone_line(l) or _is_doc_line(l) or "@" in l:
+                return False
+            # CEP (00000-000) e/ou UF (SC, SP...) no final
+            if re.search(r"\b\d{5}-?\d{3}\b", l):
+                return True
+            if re.search(r"\b[A-Z]{2}\b\s*$", l):
+                return True
+            # padrão com hífen separando CEP/cidade
+            if " - " in l and len(l) >= 8:
+                return True
+            return False
         
-        # Procurar seção "Para:" ou similar (cliente/destinatário)
-        m_para = re.search(r"(?:Para|Destinat[áa]rio)[:\s]*\n(?P<body>.{0,800})", texto, re.IGNORECASE | re.DOTALL)
+        # Procurar seção "Para" ou similar (cliente/destinatário)
+        m_para = re.search(
+            r"(?:\bPara\b|\bDestinat[áa]rio\b)[:\s]*\n(?P<body>.{0,1000})",
+            texto,
+            re.IGNORECASE | re.DOTALL,
+        )
         
         if m_para:
             body = m_para.group("body")
@@ -125,18 +175,62 @@ class BlingParserService:
                 nome = re.sub(r"^(Para[:\s]*|Destinat[áa]rio[:\s]*)", "", nome, flags=re.IGNORECASE).strip()
             
             # Procurar CNPJ ou CPF nas linhas seguintes
+            doc_idx = None
             for i, ln in enumerate(lines):
-                # Buscar CNPJ (formato brasileiro com pontos, barras e hífens)
-                m_cnpj = re.search(r"(?:CNPJ|CPF)\s*[:]?\s*([0-9./-]{6,})", ln, re.IGNORECASE)
-                if m_cnpj:
-                    documento = m_cnpj.group(1).strip()
-                    # Endereço geralmente vem logo após o CNPJ/CPF
-                    if i + 1 < len(lines):
-                        endereco = lines[i + 1]
-                    # Cidade geralmente vem depois do endereço
-                    if i + 2 < len(lines):
-                        cidade = lines[i + 2]
+                m_doc = re.search(r"(?:CNPJ|CPF)\s*[:]?\s*([0-9./-]{6,})", ln, re.IGNORECASE)
+                if m_doc:
+                    documento = m_doc.group(1).strip() or None
+                    doc_idx = i
                     break
+
+            # Extrair telefone/email preferindo o bloco do cliente
+            if body:
+                email = _extract_email_from_text(body)
+            for ln in lines:
+                if _is_phone_line(ln):
+                    # pega o que vem após ':' se existir
+                    if ":" in ln:
+                        telefone = ln.split(":", 1)[1].strip() or None
+                    else:
+                        telefone = ln.strip() or None
+                    break
+
+            # Endereço/cidade: se tinha documento, tenta usar as linhas seguintes.
+            if doc_idx is not None:
+                # Endereço geralmente vem logo após o CPF/CNPJ
+                if doc_idx + 1 < len(lines) and not _is_phone_line(lines[doc_idx + 1]):
+                    endereco = lines[doc_idx + 1]
+                # Cidade geralmente vem depois do endereço
+                if doc_idx + 2 < len(lines) and not _is_phone_line(lines[doc_idx + 2]):
+                    cidade = lines[doc_idx + 2]
+
+            # Sem CPF/CNPJ: usa heurísticas para identificar endereço/cidade.
+            if not endereco or not cidade:
+                # percorre as linhas após o nome (e após doc_idx se existir)
+                start = 1
+                if doc_idx is not None:
+                    start = max(start, doc_idx + 1)
+
+                for ln in lines[start:]:
+                    if not endereco and _looks_like_address(ln):
+                        endereco = ln
+                        continue
+                    if endereco and not cidade and _looks_like_city(ln):
+                        cidade = ln
+                        break
+
+            # fallback simples: se ainda não achou, tenta 2ª e 3ª linha do bloco
+            if not endereco:
+                for ln in lines[1:4]:
+                    if not _is_doc_line(ln) and not _is_phone_line(ln) and "@" not in ln:
+                        endereco = ln
+                        break
+            if endereco and not cidade:
+                for ln in lines[2:6]:
+                    if not _is_doc_line(ln) and not _is_phone_line(ln) and "@" not in ln:
+                        if _looks_like_city(ln) or (len(ln) > 6 and ln != endereco):
+                            cidade = ln
+                            break
         
         # Fallback: se não encontrou na seção "Para:", buscar em todo o texto
         if not nome:
@@ -155,9 +249,11 @@ class BlingParserService:
                     break
 
         
-        # Buscar telefone e email (geralmente aparecem após os dados do cliente)
-        telefone = BlingParserService._buscar_valor(texto, "Fone:", "Telefone:", "Contato:", default=None)
-        email = BlingParserService._buscar_email(texto)
+        # Fallback: Buscar telefone e email no documento inteiro (último recurso)
+        if not telefone:
+            telefone = BlingParserService._buscar_valor(texto, "Fone:", "Telefone:", "Contato:", default=None)
+        if not email:
+            email = BlingParserService._buscar_email(texto)
         
         # Validação final: se ainda não encontrou nome, usar fallback
         if not nome or len(nome.strip()) < 2:

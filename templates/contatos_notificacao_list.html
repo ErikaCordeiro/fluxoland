@@ -21,6 +21,7 @@
     <h2>Lista de Contatos</h2>
 
     {% if contatos %}
+    <div class="table-wrap">
     <table class="table">
         <thead>
             <tr>
@@ -80,6 +81,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
     {% else %}
     <p>Nenhum contato cadastrado.</p>
     {% endif %}

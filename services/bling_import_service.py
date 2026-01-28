@@ -137,6 +137,36 @@ class BlingImportService:
         proposta.peso_total_kg = None
 
     @staticmethod
+    def _merge_cliente_fields(
+        cliente_db: Cliente,
+        cliente_data: dict,
+        *,
+        overwrite: bool = False,
+    ) -> None:
+        """Atualiza campos do cliente com valores do Bling.
+
+        - overwrite=False (padrão): só preenche quando o campo no banco está vazio.
+        - overwrite=True: se o Bling trouxer valor não-vazio e diferente, sobrescreve.
+        """
+
+        def _clean(v: object) -> str | None:
+            if v is None:
+                return None
+            if isinstance(v, str):
+                s = v.strip()
+                return s or None
+            s = str(v).strip()
+            return s or None
+
+        for field in ("documento", "endereco", "cidade", "telefone", "email"):
+            new_value = _clean(cliente_data.get(field))
+            if not new_value:
+                continue
+            current = _clean(getattr(cliente_db, field, None))
+            if not current or (overwrite and current != new_value):
+                setattr(cliente_db, field, new_value)
+
+    @staticmethod
     def _aplicar_simulacao_de_referencia(
         db: Session,
         *,
@@ -368,13 +398,30 @@ class BlingImportService:
             # ATUALIZA DADOS DO CLIENTE
             # ==================================================
             cliente_nome = (cliente.get("nome") or "").strip() or "Cliente Bling"
+            # Sempre tenta enriquecer o cliente atual com dados do Bling
+            if proposta_existente.cliente is not None:
+                # Reimportação: sincroniza (se mudou no Bling, atualiza)
+                BlingImportService._merge_cliente_fields(proposta_existente.cliente, cliente, overwrite=True)
+
+            cliente_doc = (cliente.get("documento") or "").strip() or None
+
             if proposta_existente.cliente.nome != cliente_nome:
-                # Busca ou cria novo cliente
-                cliente_db = (
-                    db.query(Cliente)
-                    .filter(Cliente.nome == cliente_nome)
-                    .first()
-                )
+                # Busca por documento (quando existe) antes de cair em nome
+                cliente_db = None
+                if cliente_doc:
+                    cliente_db = (
+                        db.query(Cliente)
+                        .filter(Cliente.documento == cliente_doc)
+                        .first()
+                    )
+
+                if not cliente_db:
+                    cliente_db = (
+                        db.query(Cliente)
+                        .filter(Cliente.nome == cliente_nome)
+                        .first()
+                    )
+
                 if not cliente_db:
                     cliente_db = Cliente(
                         nome=cliente_nome,
@@ -386,6 +433,9 @@ class BlingImportService:
                     )
                     db.add(cliente_db)
                     db.flush()
+                else:
+                    BlingImportService._merge_cliente_fields(cliente_db, cliente, overwrite=True)
+
                 proposta_existente.cliente_id = cliente_db.id
             
             # ==================================================
@@ -522,6 +572,7 @@ class BlingImportService:
                     proposta=proposta_existente,
                     novo_status=PropostaStatus.pendente_cotacao,
                     observacao="Proposta reimportada do Bling - simulação manual preservada",
+                    forcar_notificacao=True,
                 )
             else:
                 # Remove simulação automática (ou qualquer simulação inválida após mudança de itens)
@@ -553,11 +604,22 @@ class BlingImportService:
         # ==================================================
         cliente_nome = (cliente.get("nome") or "").strip() or "Cliente Bling"
 
-        cliente_db = (
-            db.query(Cliente)
-            .filter(Cliente.nome == cliente_nome)
-            .first()
-        )
+        cliente_doc = (cliente.get("documento") or "").strip() or None
+
+        cliente_db = None
+        if cliente_doc:
+            cliente_db = (
+                db.query(Cliente)
+                .filter(Cliente.documento == cliente_doc)
+                .first()
+            )
+
+        if not cliente_db:
+            cliente_db = (
+                db.query(Cliente)
+                .filter(Cliente.nome == cliente_nome)
+                .first()
+            )
 
         if not cliente_db:
             cliente_db = Cliente(
@@ -570,6 +632,8 @@ class BlingImportService:
             )
             db.add(cliente_db)
             db.flush()  # garante cliente_db.id
+        else:
+            BlingImportService._merge_cliente_fields(cliente_db, cliente)
 
         # ==================================================
         # 2. CRIA PROPOSTA

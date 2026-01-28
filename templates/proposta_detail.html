@@ -8,7 +8,7 @@
 
 {% block scripts %}
 <script src="/static/js/proposta_detail.js?v=12.0"></script>
-<script src="/static/js/proposta_volumes.js"></script>
+<script src="/static/js/proposta_volumes.js?v=1.1"></script>
 {% endblock %}
 
 {% block content %}
@@ -161,7 +161,7 @@
             </div>
           </div>
 
-          <div class="preview-items">
+          <div class="preview-items section-scrollable">
             <table class="items-table">
               <thead>
                 <tr>
@@ -390,6 +390,12 @@
             style="margin: 0; white-space: pre-wrap; font-size: 13px; color: #374151;">{{ proposta.simulacao.descricao }}</pre>
           {% endif %}
 
+          {% if proposta.simulacao and proposta.simulacao.tipo == 'manual' %}
+          <form method="post" action="/propostas/{{ proposta.id }}/simulacao-manual/recalcular" style="margin-top: 10px;">
+            <button type="submit" class="btn-secondary" style="padding: 6px 10px; font-size: 12px;">Recalcular cubagem/peso do texto</button>
+          </form>
+          {% endif %}
+
           <div
             style="margin-top: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px;">
             {% set cubagem_final = proposta.cubagem_manual_m3 if (proposta.cubagem_ajustada and
@@ -399,23 +405,10 @@
               <strong>Cubagem:</strong> {{ '%.2f' % cubagem_final }} m³
             </div>
             {% endif %}
+
             {% if proposta.peso_total_kg %}
             <div>
               <strong>Peso Total:</strong> {{ '%.2f' % proposta.peso_total_kg }} kg
-            </div>
-            {% endif %}
-            {% if cubagem_final %}
-            {% set peso_cubado = cubagem_final * (PESO_CUBADO_FATOR or 300) %}
-            <div>
-              <strong>Peso Cubado:</strong> {{ '%.2f' % peso_cubado }} kg <span
-                style="color:#6b7280; font-size: 11px;">(1 m³ = {{ PESO_CUBADO_FATOR or 300 }} kg)</span>
-            </div>
-            {% endif %}
-            {% if cubagem_final and proposta.peso_total_kg %}
-            {% set peso_considerado = (proposta.peso_total_kg if proposta.peso_total_kg > peso_cubado else peso_cubado)
-            %}
-            <div>
-              <strong>Peso Considerado:</strong> {{ '%.2f' % peso_considerado }} kg
             </div>
             {% endif %}
           </div>

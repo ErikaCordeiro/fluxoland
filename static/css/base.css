@@ -3,12 +3,28 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif;
   background: #f8f9fa;
   color: #1a1a1a;
   line-height: 1.5;
+}
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Evita estouro por textos longos (IDs, URLs, etc.) sem quebrar palavras comuns no meio */
+body {
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 /* ---------- TOPO ---------- */
@@ -80,8 +96,163 @@ body {
 /* ---------- CONTAINER ---------- */
 .container {
   padding: 20px 16px;
-  max-width: 100%;
+  width: 100%;
+  max-width: 1280px;
   margin: 0 auto;
+}
+
+/* ---------- HEADERS / FILTROS ---------- */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+.kanban-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0 0 16px 0;
+}
+
+.kanban-filters input,
+.kanban-filters select {
+  margin-bottom: 0;
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.kanban-filters button,
+.kanban-filters .btn-primary {
+  width: auto;
+  margin: 0;
+}
+
+.kanban-filters .btn-clear {
+  margin: 0;
+}
+
+.btn-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 14px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.btn-clear:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+/* ---------- TABELAS ---------- */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.table th,
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  font-size: 14px;
+  vertical-align: top;
+}
+
+.table th {
+  background: #f9fafb;
+  font-weight: 700;
+  color: #374151;
+}
+
+.table tr:hover {
+  background: #f3f4f6;
+}
+
+/* botões compactos usados em listas */
+.btn-icon,
+.btn-link {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px;
+  width: auto;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.btn-link {
+  color: #374151;
+}
+
+.btn-link:hover,
+.btn-icon:hover {
+  color: #FF8C00;
+}
+
+.btn-link.danger {
+  color: #b91c1c;
+}
+
+.btn-link.danger:hover {
+  color: #991b1b;
+}
+
+/* ---------- MODAL GENÉRICO (listas) ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 999;
+  padding: 16px;
+}
+
+.modal .modal-content {
+  background: #fff;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  margin: 6vh auto;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.modal .modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.modal .modal-actions .btn-primary,
+.modal .modal-actions .btn-secondary {
+  width: auto;
 }
 
 /* ---------- TÍTULOS ---------- */
@@ -138,7 +309,7 @@ input::placeholder {
 }
 
 button {
-  width: 100%;
+  width: auto;
   padding: 12px 18px;
   margin: 6px 0 14px;
   border-radius: 8px;
@@ -160,6 +331,11 @@ button:hover {
 
 button:active {
   transform: translateY(0);
+}
+
+/* Em formulários, o padrão é botão em largura total (bom para mobile). */
+form button {
+  width: 100%;
 }
 
 /* ---------- BOTÃO PRINCIPAL ---------- */
@@ -281,6 +457,22 @@ button:active {
     width: 100%;
     order: 3;
     gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .topbar-nav::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .topbar-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+  }
+
+  .topbar-nav a {
+    flex: 0 0 auto;
   }
 
   .topbar-right {
@@ -330,6 +522,17 @@ button:active {
     font-size: 16px;
     /* Evita zoom no iOS */
   }
+
+  /* Tabelas em telas pequenas: usa wrapper rolável */
+  .table-wrap table {
+    min-width: 640px;
+  }
+
+  .kanban-filters input,
+  .kanban-filters select {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
 }
 
 /* Celulares pequenos (até 480px) */
@@ -353,10 +556,13 @@ button:active {
 
   .topbar-nav {
     gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .topbar-nav a {
-    flex: 1;
+    flex: 0 0 auto;
     text-align: center;
     min-width: 0;
     padding: 6px 8px;

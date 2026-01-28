@@ -6,7 +6,7 @@ import requests
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
-from models import Proposta, User, PropostaStatus, ContatoNotificacao, TipoNotificacao
+from models import ContatoNotificacao, Proposta, PropostaStatus, TipoNotificacao
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +85,17 @@ class WhatsAppService:
                 ContatoNotificacao.ativo == True
             ).all()
 
+            # Fallback: se não houver contatos para COTAÇÃO, usa os contatos de SIMULAÇÃO.
+            # Isso evita perder alertas do kanban quando o time cadastra apenas um grupo.
+            if (not contatos) and tipo_notificacao == TipoNotificacao.cotacao:
+                contatos = db.query(ContatoNotificacao).filter(
+                    ContatoNotificacao.tipo == TipoNotificacao.simulacao,
+                    ContatoNotificacao.ativo == True
+                ).all()
+                if contatos:
+                    logger.info("Sem contatos de cotacao; usando contatos de simulacao (fallback)")
+                    print("[WHATSAPP] Sem contatos de cotacao; usando simulacao (fallback)")
+
             telefones = [c.telefone for c in contatos]
             msg = f"📋 Encontrados {len(contatos)} contatos para tipo {tipo_notificacao}: {[c.nome for c in contatos]}"
             logger.info(msg)
@@ -124,8 +135,6 @@ class WhatsAppService:
             msg = f"❌ {falhas} de {len(telefones)} mensagens falharam"
             logger.error(msg)
             print(f"[WHATSAPP] ERRO: {falhas} de {len(telefones)} falharam")
-        
-        return sucesso
         
         return sucesso
     

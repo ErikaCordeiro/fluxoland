@@ -84,6 +84,12 @@ Automatizar e centralizar o fluxo de trabalho de propostas comerciais, integrand
 - Cálculo automático de cubagem total
 - Geração de descrição detalhada
 
+**Observação (Simulação manual por texto):**
+- O sistema consegue interpretar dimensões dentro do texto e recalcular cubagem automaticamente.
+- Exemplos aceitos: `95x95x120`, `4x95x95x1,20` e `(4x)95x95x1,20` (valores `<= 10` são tratados como metros).
+- O peso pode ser informado como `peso: 52,18` / `peso=52,18` ou em múltiplas ocorrências `17,3kg` (o sistema soma).
+- Quando a proposta já está em **Cotação**, existe um botão para **recalcular cubagem/peso do texto** sem voltar o status.
+
 **Por Volumes (Inteligente):**
 - Seleção de caixas pré-cadastradas
 - Distribuição automática de produtos nas caixas

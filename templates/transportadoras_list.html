@@ -18,6 +18,7 @@
   <h2>Lista de Transportadoras</h2>
 
   {% if transportadoras %}
+    <div class="table-wrap">
     <table class="table">
       <thead>
         <tr>
@@ -47,6 +48,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% else %}
     <p>Nenhuma transportadora cadastrada.</p>
   {% endif %}

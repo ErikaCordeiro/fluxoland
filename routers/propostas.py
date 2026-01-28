@@ -28,6 +28,12 @@ from services.galpao_service import GalpaoService
 from services.bling_parser_service import BlingParserService
 from services.bling_import_service import BlingImportService
 from services.proposta_service import PropostaService
+from utils.medidas import format_dimensoes_m
+from utils.simulacao_manual_parser import (
+    extrair_peso_total_kg,
+    extrair_volume_total_cm3,
+    parse_float_ptbr,
+)
 
 router = APIRouter(prefix="/propostas", tags=["propostas"])
 
@@ -356,7 +362,7 @@ async def simular_por_volumes(
         volume_unitario_cm3 = caixa.volume_cm3
         volume_total_cm3 += volume_unitario_cm3 * quantidade
         descricao_linhas.append(
-            f"{quantidade}x {caixa.nome} ({caixa.altura_cm}x{caixa.largura_cm}x{caixa.comprimento_cm} cm)"
+            f"{quantidade}x {caixa.nome} ({format_dimensoes_m(caixa.comprimento_cm, caixa.largura_cm, caixa.altura_cm)})"
         )
 
     # process manual volumes
@@ -367,7 +373,7 @@ async def simular_por_volumes(
         q = mv["quantidade"]
         vol_unit = c * l * h
         volume_total_cm3 += vol_unit * q
-        descricao_linhas.append(f"{q}x Manual ({c}x{l}x{h} cm)")
+        descricao_linhas.append(f"{q}x Manual ({format_dimensoes_m(c, l, h)})")
 
     if volume_total_cm3 <= 0:
         return RedirectResponse(f"/propostas/{proposta_id}", status_code=HTTP_303_SEE_OTHER)
@@ -485,32 +491,51 @@ async def salvar_simulacao_manual(
     # Processa cubagem e peso da proposta
     cubagem_str = form.get("cubagem_m3", "").strip()
     peso_str = form.get("peso_total_kg", "").strip()
-    
-    # Cubagem: usa valor informado ou extrai do texto (formato: LxAxP)
+
+    cubagem_atual = proposta.cubagem_m3
+    peso_atual = proposta.peso_total_kg
+
+    # Cubagem: considera override manual apenas se o usuário mudou o valor.
+    cubagem_form_val: float | None = None
     if cubagem_str:
-        try:
-            proposta.cubagem_m3 = float(cubagem_str)
-            proposta.cubagem_ajustada = False
-        except ValueError:
-            pass
+        cubagem_form_val = parse_float_ptbr(cubagem_str)
+
+    user_overrode_cubagem = (
+        cubagem_form_val is not None
+        and (
+            cubagem_atual is None
+            or abs(cubagem_form_val - float(cubagem_atual)) > 1e-9
+        )
+    )
+
+    if user_overrode_cubagem:
+        proposta.cubagem_m3 = cubagem_form_val
+        proposta.cubagem_ajustada = False
     else:
-        matches = re.findall(r'(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)', descricao, re.IGNORECASE)
-        if matches:
-            l, a, p = matches[0]
-            volume_cm3 = float(l) * float(a) * float(p)
-            proposta.cubagem_m3 = round(volume_cm3 / 1_000_000, 4)
+        volume_total_cm3 = extrair_volume_total_cm3(descricao)
+        if volume_total_cm3 > 0:
+            proposta.cubagem_m3 = round(volume_total_cm3 / 1_000_000, 4)
             proposta.cubagem_ajustada = False
     
-    # Peso: usa valor informado ou extrai do texto (formato: XX kg)
+    # Peso: considera override manual apenas se o usuário mudou o valor.
+    peso_form_val: float | None = None
     if peso_str:
-        try:
-            proposta.peso_total_kg = float(peso_str)
-        except ValueError:
-            pass
+        peso_form_val = parse_float_ptbr(peso_str)
+
+    user_overrode_peso = (
+        peso_form_val is not None
+        and (
+            peso_atual is None
+            or abs(peso_form_val - float(peso_atual)) > 1e-9
+        )
+    )
+
+    if user_overrode_peso:
+        proposta.peso_total_kg = peso_form_val
     else:
-        peso_match = re.search(r'(\d+(?:\.\d+)?)\s*kg', descricao, re.IGNORECASE)
-        if peso_match:
-            proposta.peso_total_kg = float(peso_match.group(1))
+        peso_from_text = extrair_peso_total_kg(descricao)
+        if peso_from_text is not None:
+            proposta.peso_total_kg = peso_from_text
 
     # Atualizar timestamp
     proposta.atualizado_em = datetime.utcnow()
@@ -527,6 +552,45 @@ async def salvar_simulacao_manual(
             novo_status=PropostaStatus.pendente_cotacao,
             observacao="Simulação manual concluída",
         )
+
+    return RedirectResponse(f"/propostas/{proposta_id}", status_code=HTTP_303_SEE_OTHER)
+
+
+@router.post("/{proposta_id}/simulacao-manual/recalcular")
+def recalcular_simulacao_manual(
+    proposta_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user_html),
+):
+    if isinstance(user, RedirectResponse):
+        return user
+
+    proposta = (
+        db.query(Proposta)
+        .options(joinedload(Proposta.simulacao))
+        .filter(Proposta.id == proposta_id)
+        .first()
+    )
+    if not proposta or not proposta.simulacao or proposta.simulacao.tipo != TipoSimulacao.manual:
+        return RedirectResponse(f"/propostas/{proposta_id}", status_code=HTTP_303_SEE_OTHER)
+
+    descricao = (proposta.simulacao.descricao or "").strip()
+    if not descricao:
+        return RedirectResponse(f"/propostas/{proposta_id}", status_code=HTTP_303_SEE_OTHER)
+
+    # Cubagem (m³)
+    volume_total_cm3 = extrair_volume_total_cm3(descricao)
+    if volume_total_cm3 > 0:
+        proposta.cubagem_m3 = round(volume_total_cm3 / 1_000_000, 4)
+        proposta.cubagem_ajustada = False
+
+    # Peso (kg)
+    peso_from_text = extrair_peso_total_kg(descricao)
+    if peso_from_text is not None:
+        proposta.peso_total_kg = peso_from_text
+
+    proposta.atualizado_em = datetime.utcnow()
+    db.commit()
 
     return RedirectResponse(f"/propostas/{proposta_id}", status_code=HTTP_303_SEE_OTHER)
 
