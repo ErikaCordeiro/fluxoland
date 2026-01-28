@@ -51,20 +51,42 @@ document.addEventListener('DOMContentLoaded', function () {
       if (v != null) return { value: v, kind: 'explicit' };
     }
 
-    // 2) Preferência: total entre parênteses '(52,18kg)'
-    let lastParen = null;
-    const reParen = /\(\s*([0-9]+(?:[\.,][0-9]+)?)\s*kg\s*\)/ig;
     let m;
-    while ((m = reParen.exec(t)) !== null) {
-      lastParen = m[1];
-    }
-    if (lastParen) {
-      const v = parseNumberBR(lastParen);
-      if (v != null) return { value: v, kind: 'explicit' };
+
+    // 2) Preferência: se existir "total ... kg" no texto
+    const mTotal = t.match(/\b(?:peso\s*)?(?:real\s*)?total\b[^\d]{0,20}([0-9]+(?:[\.,][0-9]+)*)\s*kg\b/i);
+    if (mTotal && mTotal[1]) {
+      const v = parseNumberBR(mTotal[1]);
+      if (v != null) return { value: v, kind: 'total' };
     }
 
-    // 3) Fallback: soma todos os pesos encontrados '17,34kg'
-    const reKg = /([0-9]+(?:[\.,][0-9]+)?)\s*kg\b/ig;
+    // 3) Preferência: última linha que seja apenas "(1.358kg)" / "1358kg"
+    const lines = t.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const ln = lines[i];
+      const mm = ln.match(/^\(?\s*([0-9]+(?:[\.,][0-9]+)*)\s*kg\s*\)?$/i);
+      if (mm && mm[1]) {
+        const v = parseNumberBR(mm[1]);
+        if (v != null) return { value: v, kind: 'total' };
+      }
+    }
+
+    // 4) Cálculo por linha: (28) ... - 37,5kg => 28 * 37,5
+    const reLine = /\(\s*(\d+)\s*\)[^\n]*?[-–—:]\s*([0-9]+(?:[\.,][0-9]+)*)\s*kg\b/ig;
+    let sumCalc = 0;
+    let foundCalc = 0;
+    while ((m = reLine.exec(t)) !== null) {
+      const qtd = Number.parseInt(m[1], 10);
+      const peso = parseNumberBR(m[2]);
+      if (Number.isFinite(qtd) && qtd > 0 && peso != null) {
+        sumCalc += qtd * peso;
+        foundCalc += 1;
+      }
+    }
+    if (foundCalc > 0) return { value: sumCalc, kind: 'calc' };
+
+    // 5) Fallback: soma todos os pesos encontrados '17,34kg'
+    const reKg = /([0-9]+(?:[\.,][0-9]+)*)\s*kg\b/ig;
     let sum = 0;
     let found = 0;
     while ((m = reKg.exec(t)) !== null) {

@@ -38,13 +38,7 @@ body {
   color: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
   flex-wrap: wrap;
-}
-
-.topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .topbar-logo {
@@ -59,12 +53,8 @@ body {
 .topbar-nav {
   display: flex;
   gap: 4px;
+  flex: 1 1 auto;
   flex-wrap: wrap;
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
 }
 
 .topbar a {
@@ -84,13 +74,26 @@ body {
 }
 
 .btn-logout {
-  background: rgba(239, 68, 68, 0.1);
-  color: #fca5a5;
+  background: #111827;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .btn-logout:hover {
-  background: rgba(239, 68, 68, 0.2);
+  background: #1f2937;
   color: #fff;
+}
+
+/* No celular, o :active pega bem o “tap”: fica laranja enquanto pressiona */
+.btn-logout:active {
+  background: #FF8C00;
+  border-color: #FF8C00;
+  color: #111827;
+}
+
+.btn-logout:focus-visible {
+  outline: 2px solid rgba(255, 140, 0, 0.65);
+  outline-offset: 2px;
 }
 
 /* ---------- CONTAINER ---------- */
@@ -412,11 +415,6 @@ form button {
     gap: 12px;
   }
 
-  .topbar-left {
-    gap: 16px;
-    flex: 1;
-  }
-
   .topbar-nav {
     gap: 6px;
   }
@@ -442,24 +440,37 @@ form button {
     margin-bottom: 16px;
   }
 
+  /* Header mais bonito no celular:
+     linha 1: logo + sair | linha 2: menu rolável */
   .topbar {
     padding: 10px 12px;
     gap: 10px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "logo logout"
+      "nav nav";
+    align-items: center;
   }
 
-  .topbar-left {
-    width: 100%;
-    gap: 12px;
-    justify-content: space-between;
+  .topbar-logo {
+    grid-area: logo;
+  }
+
+  .btn-logout {
+    grid-area: logout;
+    padding: 8px 12px;
+    font-size: 13px;
   }
 
   .topbar-nav {
+    grid-area: nav;
     width: 100%;
-    order: 3;
     gap: 6px;
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
   }
 
   .topbar-nav::-webkit-scrollbar {
@@ -473,10 +484,6 @@ form button {
 
   .topbar-nav a {
     flex: 0 0 auto;
-  }
-
-  .topbar-right {
-    order: 2;
   }
 
   .topbar a {
@@ -547,10 +554,6 @@ form button {
 
   .topbar {
     padding: 8px 10px;
-    gap: 8px;
-  }
-
-  .topbar-left {
     gap: 8px;
   }
 

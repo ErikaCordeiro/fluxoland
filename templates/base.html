@@ -13,24 +13,18 @@
 <body>
 
   <header class="topbar">
-    <div class="topbar-left">
-      <a href="/dashboard" class="topbar-logo">FluxoLand</a>
-
-      {% if request.session.get("user_id") %}
-      <nav class="topbar-nav">
-        <a href="/propostas">Propostas</a>
-        <a href="/transportadoras">Transportadoras</a>
-        <a href="/caixas">Caixas</a>
-        <a href="/simulacoes">Simulações</a>
-        <a href="/contatos-notificacao">Notificações</a>
-      </nav>
-      {% endif %}
-    </div>
+    <a href="/dashboard" class="topbar-logo">FluxoLand</a>
 
     {% if request.session.get("user_id") %}
-    <div class="topbar-right">
-      <a href="/logout" class="btn-logout">Sair</a>
-    </div>
+    <nav class="topbar-nav">
+      <a href="/propostas">Propostas</a>
+      <a href="/transportadoras">Transportadoras</a>
+      <a href="/caixas">Caixas</a>
+      <a href="/simulacoes">Simulações</a>
+      <a href="/contatos-notificacao">Notificações</a>
+    </nav>
+
+    <a href="/logout" class="btn-logout">Sair</a>
     {% endif %}
   </header>
 
