@@ -45,7 +45,8 @@ class BlingImportService:
 
     REGRAS:
     - Toda proposta do Bling entra como PENDENTE_SIMULACAO
-    - Nunca pula direto para cotação
+        - Só avança automaticamente para cotação quando existe proposta de referência
+            com SKUs e quantidades iguais (ordem irrelevante)
     """
 
     @staticmethod
@@ -506,143 +507,41 @@ class BlingImportService:
                 db.refresh(proposta_existente)
                 return proposta_existente
             
-            # ==================================================
-            # RESTAURA SIMULAÇÃO E AJUSTA STATUS
-            # ==================================================
-            # IMPORTANTE: Verifica primeiro se todos os produtos têm medidas
-            # mesmo que tenha simulação anterior, produtos novos podem não ter
-            produtos_com_medidas_completas = all(
-                item.produto.possui_medidas_completas()
-                for item in proposta_existente.itens
-                if item.produto
-            )
-            
             itens_iguais = produtos_anteriores == produtos_importados
 
-            # Se tinha simulação MANUAL, recria automaticamente apenas se itens não mudaram
-            if (
-                tinha_simulacao
-                and produtos_com_medidas_completas
-                and itens_iguais
-                and simulacao_anterior
-                and not simulacao_anterior.automatica
-            ):
-                # Deleta a simulação existente primeiro (por causa da constraint UNIQUE)
-                db.delete(simulacao_anterior)
-                db.flush()
-                
-                # Recria a simulação com os mesmos dados
-                nova_simulacao = Simulacao(
-                    proposta_id=proposta_existente.id,
-                    tipo=simulacao_anterior.tipo,
-                    descricao=simulacao_anterior.descricao,
-                    automatica=True,
-                )
-                db.add(nova_simulacao)
-                
-                # Restaura cubagem
-                proposta_existente.cubagem_m3 = cubagem_anterior
-                proposta_existente.cubagem_ajustada = cubagem_ajustada_anterior
-                
-                # Sempre volta para pendente_cotacao ao reimportar (com simulação preservada)
-                # Isso garante que a proposta apareça na fila ativa
+            # ==================================================
+            # SEM REFERÊNCIA: NÃO AVANÇA AUTOMATICAMENTE PARA COTAÇÃO
+            # ==================================================
+            # Regra: só vai para pendente_cotacao se existir referência com SKUs/quantidades iguais.
+            # Aqui, preservamos simulação MANUAL quando os itens não mudaram; caso contrário,
+            # limpamos simulação/cálculos e voltamos para pendente_simulacao.
+            if itens_iguais and simulacao_anterior and not simulacao_anterior.automatica:
+                # Mantém simulação manual existente.
                 PropostaService._atualizar_status(
                     db=db,
                     proposta=proposta_existente,
                     novo_status=PropostaStatus.pendente_cotacao,
-                    observacao=f"Proposta reimportada do Bling - dados e simulação atualizados",
-                )
-            elif tinha_simulacao and not produtos_com_medidas_completas:
-                # Tinha simulação MAS agora tem produtos sem medidas
-                # DEVE voltar para pendente_simulacao
-                db.delete(simulacao_anterior)
-                db.flush()
-                
-                # Limpa cubagem
-                proposta_existente.cubagem_m3 = None
-                proposta_existente.cubagem_ajustada = False
-                
-                # Volta para simulação
-                PropostaService._atualizar_status(
-                    db=db,
-                    proposta=proposta_existente,
-                    novo_status=PropostaStatus.pendente_simulacao,
-                    observacao=f"Proposta reimportada com produtos novos sem medidas - necessária nova simulação",
+                    observacao="Proposta reimportada do Bling - simulação manual preservada",
                 )
             else:
-                # ==================================================
-                # SEM SIMULAÇÃO ANTERIOR - VERIFICA SE TEM MEDIDAS
-                # ==================================================
-                # Verifica se os produtos têm medidas para criar simulação automática
+                # Remove simulação automática (ou qualquer simulação inválida após mudança de itens)
                 BlingImportService._substituir_simulacao(
                     db,
                     proposta=proposta_existente,
                     nova_simulacao=None,
                 )
+                BlingImportService._limpar_calculos(proposta_existente)
 
-                produtos_com_medidas_completas = all(
-                    item.produto.possui_medidas_completas()
-                    for item in proposta_existente.itens
-                    if item.produto
+                PropostaService._atualizar_status(
+                    db=db,
+                    proposta=proposta_existente,
+                    novo_status=PropostaStatus.pendente_simulacao,
+                    observacao=(
+                        "Proposta reimportada do Bling - necessário simulação "
+                        "(sem referência com SKUs/quantidades iguais)"
+                    ),
+                    forcar_notificacao=True,
                 )
-                
-                if produtos_com_medidas_completas and len(proposta_existente.itens) > 0:
-                    peso_total_kg, cubagem_m3, descricao = BlingImportService._calcular_automatico_volumes(proposta_existente)
-
-                    if cubagem_m3 and descricao:
-                        simulacao = Simulacao(
-                            proposta_id=proposta_existente.id,
-                            tipo=TipoSimulacao.volumes,
-                            descricao=descricao,
-                            automatica=True,
-                        )
-                        db.add(simulacao)
-
-                        proposta_existente.cubagem_m3 = cubagem_m3
-                        proposta_existente.cubagem_ajustada = False
-                        proposta_existente.peso_total_kg = peso_total_kg
-                        
-                        # Avança para COTAÇÃO com simulação automática
-                        PropostaService._atualizar_status(
-                            db=db,
-                            proposta=proposta_existente,
-                            novo_status=PropostaStatus.pendente_cotacao,
-                            observacao=f"Proposta reimportada (anteriormente {status_anterior}) - simulação criada automaticamente (produtos com medidas conhecidas)",
-                        )
-                    else:
-                        # Não conseguiu calcular cubagem
-                        if status_era_finalizado:
-                            PropostaService._atualizar_status(
-                                db=db,
-                                proposta=proposta_existente,
-                                novo_status=PropostaStatus.pendente_simulacao,
-                                observacao=f"Proposta reimportada do Bling (anteriormente {status_anterior}) - dados atualizados",
-                            )
-                        else:
-                            PropostaService._registrar_historico(
-                                db=db,
-                                proposta=proposta_existente,
-                                status=proposta_existente.status,
-                                observacao="Dados atualizados do Bling",
-                            )
-                else:
-                    # Sem medidas completas
-                    if status_era_finalizado:
-                        # Volta para pendente_simulacao
-                        PropostaService._atualizar_status(
-                            db=db,
-                            proposta=proposta_existente,
-                            novo_status=PropostaStatus.pendente_simulacao,
-                            observacao=f"Proposta reimportada do Bling (anteriormente {status_anterior}) - dados atualizados",
-                        )
-                    else:
-                        # Mantém no status atual, apenas registra a atualização
-                        PropostaService._registrar_historico(
-                            db=db,
-                            proposta=proposta_existente,
-                            status=proposta_existente.status,
-                            observacao="Dados atualizados do Bling",
-                        )
             
             BlingImportService._sincronizar_calculos_se_automatico_volumes(proposta_existente)
             db.commit()
@@ -803,63 +702,15 @@ class BlingImportService:
                 forcar_notificacao=True,
             )
         else:
-            # Sem proposta de referência - verifica se produtos têm medidas cadastradas
+            # Sem proposta de referência: mantém pendente_simulacao.
             BlingImportService._debug(f"[BLING IMPORT] Proposta {proposta.id} sem referência")
-            produtos_com_medidas_completas = all(
-                item.produto and item.produto.possui_medidas_completas()
-                for item in proposta.itens
+            PropostaService._atualizar_status(
+                db=db,
+                proposta=proposta,
+                novo_status=PropostaStatus.pendente_simulacao,
+                observacao="Proposta importada do Bling - necessário simulação (sem referência com SKUs/quantidades iguais)",
+                forcar_notificacao=True,
             )
-            BlingImportService._debug(
-                f"[BLING IMPORT] Tem medidas completas: {produtos_com_medidas_completas}"
-            )
-            
-            if produtos_com_medidas_completas and len(proposta.itens) > 0:
-                peso_total_kg, cubagem_m3, descricao = BlingImportService._calcular_automatico_volumes(proposta)
-
-                if cubagem_m3 and descricao:
-                    simulacao = Simulacao(
-                        proposta_id=proposta.id,
-                        tipo=TipoSimulacao.volumes,
-                        descricao=descricao,
-                        automatica=True,
-                    )
-                    db.add(simulacao)
-
-                    proposta.cubagem_m3 = cubagem_m3
-                    proposta.cubagem_ajustada = False
-                    proposta.peso_total_kg = peso_total_kg
-                    
-                    BlingImportService._debug(
-                        f"[BLING IMPORT] Tem cubagem, indo para cotação (m³: {cubagem_m3})"
-                    )
-                    # Avança direto para COTAÇÃO
-                    PropostaService._atualizar_status(
-                        db=db,
-                        proposta=proposta,
-                        novo_status=PropostaStatus.pendente_cotacao,
-                        observacao="Proposta importada do Bling - simulação criada automaticamente (produtos com medidas conhecidas)",
-                        forcar_notificacao=True,
-                    )
-                else:
-                    # Tem produtos mas não conseguiu calcular cubagem
-                    BlingImportService._debug("[BLING IMPORT] Sem cubagem, indo para simulação")
-                    PropostaService._atualizar_status(
-                        db=db,
-                        proposta=proposta,
-                        novo_status=PropostaStatus.pendente_simulacao,
-                        observacao="Proposta importada automaticamente do Bling",
-                        forcar_notificacao=True,
-                    )
-            else:
-                # Sem medidas conhecidas, vai para simulação manual
-                BlingImportService._debug("[BLING IMPORT] Sem medidas, indo para simulação")
-                PropostaService._atualizar_status(
-                    db=db,
-                    proposta=proposta,
-                    novo_status=PropostaStatus.pendente_simulacao,
-                    observacao="Proposta importada automaticamente do Bling",
-                    forcar_notificacao=True,
-                )
 
         db.commit()
         db.refresh(proposta)

@@ -394,15 +394,6 @@
             style="margin-top: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px;">
             {% set cubagem_final = proposta.cubagem_manual_m3 if (proposta.cubagem_ajustada and
             proposta.cubagem_manual_m3) else proposta.cubagem_m3 %}
-            {% set ns = namespace(volumes_total=0) %}
-            {% for item in proposta.itens %}
-            {% set ns.volumes_total = ns.volumes_total + (item.quantidade or 0) %}
-            {% endfor %}
-            {% if ns.volumes_total %}
-            <div>
-              <strong>Volumes (unidades):</strong> {{ ns.volumes_total }}
-            </div>
-            {% endif %}
             {% if cubagem_final %}
             <div>
               <strong>Cubagem:</strong> {{ '%.2f' % cubagem_final }} m³
