@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		document.documentElement.classList.toggle('drawer-open', open);
 	};
 
+	const isOpen = () => burger.getAttribute('aria-expanded') === 'true';
+
 	const open = () => {
 		setOpen(true);
 		// foco no botão fechar para acessibilidade
@@ -26,18 +28,36 @@ document.addEventListener('DOMContentLoaded', () => {
 	};
 
 	burger.addEventListener('click', () => {
-		const isOpen = burger.getAttribute('aria-expanded') === 'true';
-		isOpen ? close() : open();
+		isOpen() ? close() : open();
 	});
 
+	// Alguns celulares são mais confiáveis com pointer/touch do que click
+	overlay.addEventListener('pointerdown', close);
 	overlay.addEventListener('click', close);
-	if (closeBtn) closeBtn.addEventListener('click', close);
+	if (closeBtn) {
+		closeBtn.addEventListener('pointerdown', close);
+		closeBtn.addEventListener('click', close);
+	}
 	if (drawerLinks && drawerLinks.length) {
 		drawerLinks.forEach((a) => a.addEventListener('click', close));
 	}
 
+	// Fallback: clique fora do drawer fecha (mesmo se o overlay não capturar o evento)
+	document.addEventListener(
+		'click',
+		(e) => {
+			if (!isOpen()) return;
+			const target = e.target;
+			if (!(target instanceof Element)) return;
+			if (drawer.contains(target)) return;
+			if (burger.contains(target)) return;
+			close();
+		},
+		true
+	);
+
 	document.addEventListener('keydown', (e) => {
-		if (e.key === 'Escape' && burger.getAttribute('aria-expanded') === 'true') {
+		if (e.key === 'Escape' && isOpen()) {
 			close();
 		}
 	});

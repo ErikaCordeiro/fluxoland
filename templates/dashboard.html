@@ -3,7 +3,7 @@
 {% block title %}Dashboard - FluxoLand{% endblock %}
 
 {% block css %}
-<link rel="stylesheet" href="/static/css/dashboard.css?v=2.0">
+<link rel="stylesheet" href="/static/css/dashboard.css?v=2.1">
 {% endblock %}
 
 {% block content %}
@@ -195,12 +195,12 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="/static/js/dashboard.js?v=2.0"></script>
+<script src="/static/js/dashboard.js?v=2.1"></script>
 <script>
     // Inject data from backend
     window.dashboardData = {
         chartStatus: {{ chart_status | tojson }},
-    chartEvolution: { { chart_evolution | tojson } }
+        chartEvolution: {{ chart_evolution | tojson }}
     };
 </script>
 {% endblock %}
