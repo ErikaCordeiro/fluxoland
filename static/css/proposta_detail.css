@@ -29,31 +29,31 @@
 /* Modal responsivo em telas pequenas */
 @media (max-width: 1200px) {
     .modal-content {
-        max-width: 80%;
+        max-width: 1000px;
     }
 }
 
 @media (max-width: 768px) {
     .modal-overlay {
-        padding: 16px;
+        align-items: flex-start;
+        padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
     }
 
     .modal-content {
-        max-width: 85%;
-        max-height: calc(100vh - 32px);
-        border-radius: 12px;
+        width: 100%;
+        max-width: 100%;
+        max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        border-radius: 14px;
     }
 }
 
 @media (max-width: 480px) {
     .modal-overlay {
-        padding: 12px;
+        padding: calc(10px + env(safe-area-inset-top, 0px)) 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
     }
 
     .modal-content {
-        max-width: 90%;
-        max-height: calc(100vh - 24px);
-        border-radius: 8px;
+        border-radius: 12px;
     }
 }
 
@@ -64,6 +64,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding: 16px 20px;
     border-bottom: 1px solid #e5e7eb;
 }
@@ -73,6 +74,9 @@
     font-weight: 600;
     margin: 0;
     color: #111827;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
 }
 
 .modal-close {

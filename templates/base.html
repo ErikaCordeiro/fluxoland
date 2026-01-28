@@ -6,17 +6,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}FluxoLand{% endblock %}</title>
 
-  <link rel="stylesheet" href="/static/css/base.css?v=4.1">
+  <link rel="stylesheet" href="/static/css/base.css?v=4.2">
   {% block css %}{% endblock %}
 </head>
 
 <body>
 
   <header class="topbar">
+    {% if request.session.get("user_id") %}
+    <button
+      type="button"
+      class="topbar-burger"
+      aria-label="Abrir menu"
+      aria-controls="mobile-drawer"
+      aria-expanded="false"
+    >
+      ☰
+    </button>
+    {% endif %}
+
     <a href="/dashboard" class="topbar-logo">FluxoLand</a>
 
     {% if request.session.get("user_id") %}
-    <nav class="topbar-nav">
+    <nav class="topbar-nav" aria-label="Navegação principal">
       <a href="/propostas">Propostas</a>
       <a href="/transportadoras">Transportadoras</a>
       <a href="/caixas">Caixas</a>
@@ -24,7 +36,28 @@
       <a href="/contatos-notificacao">Notificações</a>
     </nav>
 
-    <a href="/logout" class="btn-logout">Sair</a>
+    <div class="topbar-actions">
+      <a href="/logout" class="btn-logout">Sair</a>
+    </div>
+
+    <div class="drawer-overlay" id="drawer-overlay" hidden></div>
+
+    <aside class="drawer" id="mobile-drawer" hidden aria-label="Menu">
+      <div class="drawer-header">
+        <div class="drawer-title">Menu</div>
+        <button type="button" class="drawer-close" aria-label="Fechar menu">×</button>
+      </div>
+      <div class="drawer-links">
+        <a href="/propostas">Propostas</a>
+        <a href="/transportadoras">Transportadoras</a>
+        <a href="/caixas">Caixas</a>
+        <a href="/simulacoes">Simulações</a>
+        <a href="/contatos-notificacao">Notificações</a>
+      </div>
+      <div class="drawer-footer">
+        <a href="/logout" class="btn-logout drawer-logout">Sair</a>
+      </div>
+    </aside>
     {% endif %}
   </header>
 
@@ -32,6 +65,7 @@
     {% block content %}{% endblock %}
   </main>
 
+  <script src="/static/js/main.js?v=1.1"></script>
   {% block scripts %}{% endblock %}
 
 </body>
