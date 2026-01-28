@@ -31,6 +31,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Evita logs verbosos do SQLAlchemy em produção.
+# Se precisar depurar SQL, use `DEBUG=true` (e opcionalmente ajuste nível dos loggers).
+for _logger_name in [
+    "sqlalchemy.engine",
+    "sqlalchemy.engine.Engine",
+    "sqlalchemy.orm",
+    "sqlalchemy.pool",
+]:
+    logging.getLogger(_logger_name).setLevel(logging.WARNING)
+
 # Load environment variables
 load_dotenv()
 

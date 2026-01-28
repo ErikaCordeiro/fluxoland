@@ -30,7 +30,8 @@ if not DATABASE_URL:
     )
 
 # Determine if debug mode is enabled
-DEBUG = os.getenv("DEBUG", "true").lower() == "true"
+# Em produção, o default deve ser não-verboso para evitar spam de SQL nos logs.
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 
 def create_db_engine() -> Engine:
