@@ -38,7 +38,13 @@ def importar_proposta_por_link(
         )
 
     # tentar parsear o documento público do Bling e importar
-    dados = BlingParserService.parse_doc_view(link_bling)
+    try:
+        dados = BlingParserService.parse_doc_view(link_bling)
+    except ValueError:
+        return RedirectResponse(
+            "/propostas?erro=bling_link_invalido",
+            status_code=HTTP_303_SEE_OTHER,
+        )
 
     BlingImportService.importar_proposta_bling(
         db=db,

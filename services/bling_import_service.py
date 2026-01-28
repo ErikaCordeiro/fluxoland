@@ -1,3 +1,7 @@
+import logging
+import os
+from datetime import datetime
+
 from sqlalchemy.orm import Session, joinedload
 
 from models import (
@@ -13,6 +17,27 @@ from models import (
 
 from services.proposta_service import PropostaService
 
+from utils.medidas import format_dimensoes_m
+
+
+DEBUG_ENV_VAR = "DEBUG_BLING_IMPORT"
+
+
+VENDEDOR_TELEFONE_MAP: dict[str, str] = {
+    "AMARILDO MONTIBELER": "5547991316330",
+    "ANDERSON ADAMI": "5547992277405",
+    "CARLOS HENRIQUE GUIMARAES DELUCHI": "5547991022964",
+    "JOÃO PEDRO DE SOUZA": "5547992268504",
+    "LUCAS DOGNINI SOARES": "5547991707963",
+    "MARCOS LUIS DA CONCEIÇÃO": "554791917906",
+    "RODRIGO BOAVENTURA": "5547991791978",
+    "TARNIE RICARDO MONTIBELER": "5547991917907",
+    "VICTOR HUGO DE MELLO": "5547991695494",
+}
+
+
+logger = logging.getLogger(__name__)
+
 
 class BlingImportService:
     """
@@ -22,6 +47,258 @@ class BlingImportService:
     - Toda proposta do Bling entra como PENDENTE_SIMULACAO
     - Nunca pula direto para cotação
     """
+
+    @staticmethod
+    def _debug(msg: str) -> None:
+        if os.getenv(DEBUG_ENV_VAR, "").lower() in {"1", "true", "yes"}:
+            logger.info(msg)
+
+    @staticmethod
+    def _mapear_itens_por_sku(itens: list[PropostaProduto] | None) -> dict[str, int]:
+        produtos: dict[str, int] = {}
+        for item in itens or []:
+            if not item.produto or not item.produto.sku:
+                continue
+            sku = item.produto.sku.strip()
+            if not sku:
+                continue
+            produtos[sku] = produtos.get(sku, 0) + int(item.quantidade or 0)
+        return produtos
+
+    @staticmethod
+    def _score_referencia(candidata: Proposta) -> tuple:
+        tem_peso = 1 if candidata.peso_total_kg else 0
+        tem_cubagem_manual = 1 if candidata.cubagem_manual_m3 else 0
+        tem_cubagem = 1 if candidata.cubagem_m3 else 0
+        simulacao_manual = 1 if (candidata.simulacao and not candidata.simulacao.automatica) else 0
+        return (
+            tem_peso,
+            tem_cubagem_manual,
+            tem_cubagem,
+            simulacao_manual,
+            candidata.criado_em,
+        )
+
+    @staticmethod
+    def _buscar_proposta_referencia(
+        db: Session,
+        *,
+        proposta_id_excluir: int,
+        produtos_importados: dict[str, int],
+    ) -> Proposta | None:
+        if not produtos_importados:
+            return None
+
+        candidatas = (
+            db.query(Proposta)
+            .options(
+                joinedload(Proposta.simulacao),
+                joinedload(Proposta.itens).joinedload(PropostaProduto.produto),
+            )
+            .filter(
+                Proposta.id != proposta_id_excluir,
+                Proposta.simulacao.has(),
+                Proposta.status != PropostaStatus.pendente_simulacao,
+            )
+            .order_by(Proposta.criado_em.desc())
+            .all()
+        )
+
+        iguais = [
+            c
+            for c in candidatas
+            if BlingImportService._mapear_itens_por_sku(c.itens) == produtos_importados
+        ]
+        if not iguais:
+            return None
+
+        iguais.sort(key=BlingImportService._score_referencia, reverse=True)
+        return iguais[0]
+
+    @staticmethod
+    def _substituir_simulacao(
+        db: Session,
+        *,
+        proposta: Proposta,
+        nova_simulacao: Simulacao | None,
+    ) -> None:
+        if getattr(proposta, "simulacao", None) is not None:
+            db.delete(proposta.simulacao)
+            db.flush()
+        if nova_simulacao is not None:
+            db.add(nova_simulacao)
+
+    @staticmethod
+    def _limpar_calculos(proposta: Proposta) -> None:
+        proposta.cubagem_m3 = None
+        proposta.cubagem_manual_m3 = None
+        proposta.cubagem_ajustada = False
+        proposta.peso_total_kg = None
+
+    @staticmethod
+    def _aplicar_simulacao_de_referencia(
+        db: Session,
+        *,
+        proposta_destino: Proposta,
+        proposta_referencia: Proposta,
+    ) -> str | None:
+        """Tenta aplicar simulação usando uma proposta referência.
+
+        Retorna a observação de histórico se conseguiu; caso contrário retorna None.
+        """
+
+        simulacao_ref = getattr(proposta_referencia, "simulacao", None)
+        if not simulacao_ref:
+            return None
+
+        # 1) Se a referência é MANUAL, copia.
+        if not simulacao_ref.automatica:
+            nova_sim = Simulacao(
+                proposta_id=proposta_destino.id,
+                tipo=simulacao_ref.tipo,
+                descricao=simulacao_ref.descricao,
+                automatica=True,
+            )
+            BlingImportService._substituir_simulacao(db, proposta=proposta_destino, nova_simulacao=nova_sim)
+
+            proposta_destino.cubagem_m3 = proposta_referencia.cubagem_m3
+            proposta_destino.cubagem_manual_m3 = proposta_referencia.cubagem_manual_m3
+            proposta_destino.cubagem_ajustada = proposta_referencia.cubagem_ajustada
+            proposta_destino.peso_total_kg = proposta_referencia.peso_total_kg
+            return (
+                f"Simulação manual copiada da proposta #{proposta_referencia.id} "
+                f"(mesmos produtos)"
+            )
+
+        # 2) Referência automática: tenta recalcular a partir das medidas atuais.
+        peso_total_kg, cubagem_m3, descricao = BlingImportService._calcular_automatico_volumes(proposta_destino)
+        if cubagem_m3 and descricao:
+            nova_sim = Simulacao(
+                proposta_id=proposta_destino.id,
+                tipo=TipoSimulacao.volumes,
+                descricao=descricao,
+                automatica=True,
+            )
+            BlingImportService._substituir_simulacao(db, proposta=proposta_destino, nova_simulacao=nova_sim)
+            proposta_destino.cubagem_m3 = cubagem_m3
+            proposta_destino.cubagem_manual_m3 = None
+            proposta_destino.cubagem_ajustada = False
+            proposta_destino.peso_total_kg = peso_total_kg
+            return (
+                f"Simulação recalculada automaticamente (referência #{proposta_referencia.id} "
+                f"ignorada por ser automática)"
+            )
+
+        # 3) Fallback: sem medidas suficientes. Copia a simulação automática se tiver pronta.
+        if proposta_referencia.cubagem_m3 and simulacao_ref.descricao:
+            nova_sim = Simulacao(
+                proposta_id=proposta_destino.id,
+                tipo=simulacao_ref.tipo,
+                descricao=simulacao_ref.descricao,
+                automatica=True,
+            )
+            BlingImportService._substituir_simulacao(db, proposta=proposta_destino, nova_simulacao=nova_sim)
+            proposta_destino.cubagem_m3 = proposta_referencia.cubagem_m3
+            proposta_destino.cubagem_manual_m3 = proposta_referencia.cubagem_manual_m3
+            proposta_destino.cubagem_ajustada = proposta_referencia.cubagem_ajustada
+            proposta_destino.peso_total_kg = proposta_referencia.peso_total_kg
+            return (
+                f"Simulação automática copiada da proposta #{proposta_referencia.id} "
+                f"(itens/quantidades iguais; sem medidas para recalcular)"
+            )
+
+        return None
+
+    @staticmethod
+    def _montar_observacao_importacao(
+        *,
+        observacao: str | None,
+        pedido: dict | None,
+    ) -> tuple[str, str | None, str | None]:
+        obs = (observacao or "").strip()
+        vendedor_nome = None
+        vendedor_telefone = None
+
+        if pedido and pedido.get("numero"):
+            obs = f"bling_numero:{pedido.get('numero')}; {obs}".strip()
+        if pedido and pedido.get("vendedor"):
+            vendedor_nome = str(pedido.get("vendedor") or "").strip() or None
+            if vendedor_nome:
+                obs = f"bling_vendedor:{vendedor_nome}; {obs}".strip()
+                vendedor_telefone = VENDEDOR_TELEFONE_MAP.get(vendedor_nome.upper())
+
+        return obs, vendedor_nome, vendedor_telefone
+
+    @staticmethod
+    def _calcular_automatico_volumes(
+        proposta: Proposta,
+    ) -> tuple[float | None, float | None, str]:
+        """Calcula peso, cubagem e descrição no padrão 'QTDx Nome (dimensões m)'.
+
+        Não faz commit; apenas retorna os valores calculados.
+        """
+
+        peso_total = 0.0
+        cubagem_total_cm3 = 0.0
+        descricao_linhas: list[str] = []
+
+        for item_prop in (proposta.itens or []):
+            produto = item_prop.produto
+            if not produto:
+                continue
+
+            quantidade = int(item_prop.quantidade or 0)
+            if quantidade <= 0:
+                continue
+
+            if produto.peso_unitario_kg is not None:
+                peso_total += (produto.peso_unitario_kg or 0) * quantidade
+
+            if (
+                produto.comprimento_cm is not None
+                and produto.largura_cm is not None
+                and produto.altura_cm is not None
+            ):
+                volume_unitario = (
+                    (produto.comprimento_cm or 0)
+                    * (produto.largura_cm or 0)
+                    * (produto.altura_cm or 0)
+                )
+                cubagem_total_cm3 += volume_unitario * quantidade
+
+                descricao_linhas.append(
+                    f"{quantidade}x {produto.nome} "
+                    f"({format_dimensoes_m(produto.comprimento_cm, produto.largura_cm, produto.altura_cm)} m)"
+                )
+
+        peso_final = round(peso_total, 3) if peso_total > 0 else None
+        cubagem_m3 = round(cubagem_total_cm3 / 1_000_000, 4) if cubagem_total_cm3 > 0 else None
+        return peso_final, cubagem_m3, "\n".join(descricao_linhas)
+
+    @staticmethod
+    def _sincronizar_calculos_se_automatico_volumes(proposta: Proposta) -> None:
+        """Mantém peso/cubagem/descrição consistentes quando a simulação é automática por volumes."""
+
+        try:
+            if not getattr(proposta, "simulacao", None):
+                return
+            if not proposta.simulacao.automatica:
+                return
+            if proposta.simulacao.tipo != TipoSimulacao.volumes:
+                return
+            if proposta.cubagem_ajustada:
+                return
+
+            peso_total_kg, cubagem_m3, descricao = BlingImportService._calcular_automatico_volumes(proposta)
+            if peso_total_kg is not None:
+                proposta.peso_total_kg = peso_total_kg
+            if cubagem_m3 is not None:
+                proposta.cubagem_m3 = cubagem_m3
+            if descricao:
+                proposta.simulacao.descricao = descricao
+        except Exception:
+            # Em caso de falha de sincronização, não bloqueia a importação.
+            return
 
     @staticmethod
     def importar_proposta_bling(
@@ -59,7 +336,6 @@ class BlingImportService:
         # ==================================================
         # 0. EVITA DUPLICIDADE (ID BLING)
         # ==================================================
-        # Verifica se já existe uma proposta com este ID do Bling
         proposta_existente = (
             db.query(Proposta)
             .options(
@@ -76,14 +352,16 @@ class BlingImportService:
         # Se encontrou uma proposta existente:
         # SEMPRE permite reimportação para atualizar dados do Bling
         if proposta_existente:
-            # Captura dados da simulação anterior (se existia)
             simulacao_anterior = proposta_existente.simulacao
             tinha_simulacao = simulacao_anterior is not None
             cubagem_anterior = proposta_existente.cubagem_m3
             cubagem_ajustada_anterior = proposta_existente.cubagem_ajustada
-            
+
             status_anterior = proposta_existente.status.value
-            status_era_finalizado = proposta_existente.status in [PropostaStatus.cancelada, PropostaStatus.concluida]
+            status_era_finalizado = proposta_existente.status in {
+                PropostaStatus.cancelada,
+                PropostaStatus.concluida,
+            }
                 
             # ==================================================
             # ATUALIZA DADOS DO CLIENTE
@@ -110,15 +388,12 @@ class BlingImportService:
                 proposta_existente.cliente_id = cliente_db.id
             
             # ==================================================
-            # ATUALIZA OBSERVAÇÃO (inclui número e vendedor do Bling)
+            # ATUALIZA OBSERVAÇÃO / DESCONTO
             # ==================================================
-            obs = observacao or ""
-            if pedido and pedido.get("numero"):
-                obs = f"bling_numero:{pedido.get('numero')}; {obs}".strip()
-            if pedido and pedido.get("vendedor"):
-                vendedor_bling = pedido.get("vendedor")
-                if "bling_vendedor:" not in obs:
-                    obs = f"bling_vendedor:{vendedor_bling}; {obs}".strip()
+            obs, _, _ = BlingImportService._montar_observacao_importacao(
+                observacao=observacao,
+                pedido=pedido,
+            )
             proposta_existente.observacao_importacao = obs
             
             # ==================================================
@@ -127,13 +402,13 @@ class BlingImportService:
             if pedido:
                 proposta_existente.desconto = pedido.get("desconto")
             
-            # Atualiza timestamp de modificação
-            from datetime import datetime
             proposta_existente.atualizado_em = datetime.utcnow()
             
             # ==================================================
             # ATUALIZA ITENS DA PROPOSTA
             # ==================================================
+            produtos_anteriores = BlingImportService._mapear_itens_por_sku(proposta_existente.itens)
+
             # Remove todos os itens antigos
             for item_antigo in proposta_existente.itens:
                 db.delete(item_antigo)
@@ -185,8 +460,51 @@ class BlingImportService:
                 db.query(Proposta)
                 .options(joinedload(Proposta.itens).joinedload(PropostaProduto.produto))
                 .filter(Proposta.id == proposta_existente.id)
+                .populate_existing()
                 .first()
             )
+
+            produtos_importados = BlingImportService._mapear_itens_por_sku(proposta_existente.itens)
+            proposta_referencia = BlingImportService._buscar_proposta_referencia(
+                db,
+                proposta_id_excluir=proposta_existente.id,
+                produtos_importados=produtos_importados,
+            )
+
+            if proposta_referencia:
+                obs_ref = BlingImportService._aplicar_simulacao_de_referencia(
+                    db,
+                    proposta_destino=proposta_existente,
+                    proposta_referencia=proposta_referencia,
+                )
+                if obs_ref:
+                    PropostaService._atualizar_status(
+                        db=db,
+                        proposta=proposta_existente,
+                        novo_status=PropostaStatus.pendente_cotacao,
+                        observacao=f"Proposta reimportada: {obs_ref}",
+                        forcar_notificacao=True,
+                    )
+
+                    BlingImportService._sincronizar_calculos_se_automatico_volumes(proposta_existente)
+                    db.commit()
+                    db.refresh(proposta_existente)
+                    return proposta_existente
+
+                BlingImportService._limpar_calculos(proposta_existente)
+                PropostaService._atualizar_status(
+                    db=db,
+                    proposta=proposta_existente,
+                    novo_status=PropostaStatus.pendente_simulacao,
+                    observacao=(
+                        "Proposta reimportada do Bling - necessário recalcular simulação "
+                        "(sem referência útil e sem medidas completas)"
+                    ),
+                    forcar_notificacao=True,
+                )
+                db.commit()
+                db.refresh(proposta_existente)
+                return proposta_existente
             
             # ==================================================
             # RESTAURA SIMULAÇÃO E AJUSTA STATUS
@@ -199,8 +517,16 @@ class BlingImportService:
                 if item.produto
             )
             
-            # Se tinha simulação, recria automaticamente
-            if tinha_simulacao and produtos_com_medidas_completas:
+            itens_iguais = produtos_anteriores == produtos_importados
+
+            # Se tinha simulação MANUAL, recria automaticamente apenas se itens não mudaram
+            if (
+                tinha_simulacao
+                and produtos_com_medidas_completas
+                and itens_iguais
+                and simulacao_anterior
+                and not simulacao_anterior.automatica
+            ):
                 # Deleta a simulação existente primeiro (por causa da constraint UNIQUE)
                 db.delete(simulacao_anterior)
                 db.flush()
@@ -248,6 +574,12 @@ class BlingImportService:
                 # SEM SIMULAÇÃO ANTERIOR - VERIFICA SE TEM MEDIDAS
                 # ==================================================
                 # Verifica se os produtos têm medidas para criar simulação automática
+                BlingImportService._substituir_simulacao(
+                    db,
+                    proposta=proposta_existente,
+                    nova_simulacao=None,
+                )
+
                 produtos_com_medidas_completas = all(
                     item.produto.possui_medidas_completas()
                     for item in proposta_existente.itens
@@ -255,42 +587,20 @@ class BlingImportService:
                 )
                 
                 if produtos_com_medidas_completas and len(proposta_existente.itens) > 0:
-                    # Calcula cubagem total baseado nas medidas dos produtos
-                    cubagem_total_cm3 = 0.0
-                    descricao_linhas = []
-                    
-                    for item_prop in proposta_existente.itens:
-                        produto = item_prop.produto
-                        if produto.possui_medidas_completas():
-                            volume_unitario = (
-                                produto.comprimento_cm *
-                                produto.largura_cm *
-                                produto.altura_cm
-                            )
-                            volume_total_item = volume_unitario * item_prop.quantidade
-                            cubagem_total_cm3 += volume_total_item
-                            
-                            descricao_linhas.append(
-                                f"{item_prop.quantidade}x {produto.nome} "
-                                f"({produto.comprimento_cm}x{produto.largura_cm}x{produto.altura_cm} cm)"
-                            )
-                    
-                    if cubagem_total_cm3 > 0:
-                        # Converte para m³
-                        cubagem_m3 = cubagem_total_cm3 / 1_000_000
-                        
-                        # Cria simulação automática
+                    peso_total_kg, cubagem_m3, descricao = BlingImportService._calcular_automatico_volumes(proposta_existente)
+
+                    if cubagem_m3 and descricao:
                         simulacao = Simulacao(
                             proposta_id=proposta_existente.id,
                             tipo=TipoSimulacao.volumes,
-                            descricao="\n".join(descricao_linhas),
+                            descricao=descricao,
                             automatica=True,
                         )
                         db.add(simulacao)
-                        
-                        # Atualiza cubagem da proposta
-                        proposta_existente.cubagem_m3 = round(cubagem_m3, 4)
+
+                        proposta_existente.cubagem_m3 = cubagem_m3
                         proposta_existente.cubagem_ajustada = False
+                        proposta_existente.peso_total_kg = peso_total_kg
                         
                         # Avança para COTAÇÃO com simulação automática
                         PropostaService._atualizar_status(
@@ -334,6 +644,7 @@ class BlingImportService:
                             observacao="Dados atualizados do Bling",
                         )
             
+            BlingImportService._sincronizar_calculos_se_automatico_volumes(proposta_existente)
             db.commit()
             db.refresh(proposta_existente)
             return proposta_existente
@@ -364,29 +675,12 @@ class BlingImportService:
         # ==================================================
         # 2. CRIA PROPOSTA
         # ==================================================
-        # monta observação incluindo número e vendedor do Bling quando disponível
-        obs = observacao or ""
-        vendedor_bling_nome = None
-        vendedor_bling_telefone = None
-        
-        if pedido and pedido.get("numero"):
-            obs = f"bling_numero:{pedido.get('numero')}; {obs}".strip()
-        if pedido and pedido.get("vendedor"):
-            vendedor_bling_nome = pedido.get("vendedor")
-            obs = f"bling_vendedor:{vendedor_bling_nome}; {obs}".strip()
-            # Mapeamento de vendedores Bling para seus telefones (dados da lista de vendedores)
-            mapeamento_vendedores = {
-                "AMARILDO MONTIBELER": "5547991316330",
-                "ANDERSON ADAMI": "5547992277405",
-                "CARLOS HENRIQUE GUIMARAES DELUCHI": "5547991022964",
-                "JOÃO PEDRO DE SOUZA": "5547992268504",
-                "LUCAS DOGNINI SOARES": "5547991707963",
-                "MARCOS LUIS DA CONCEIÇÃO": "554791917906",
-                "RODRIGO BOAVENTURA": "5547991791978",
-                "TARNIE RICARDO MONTIBELER": "5547991917907",
-                "VICTOR HUGO DE MELLO": "5547991695494",
-            }
-            vendedor_bling_telefone = mapeamento_vendedores.get(vendedor_bling_nome.upper())
+        obs, vendedor_bling_nome, vendedor_bling_telefone = (
+            BlingImportService._montar_observacao_importacao(
+                observacao=observacao,
+                pedido=pedido,
+            )
+        )
 
         proposta = Proposta(
             origem=PropostaOrigem.bling,
@@ -450,122 +744,94 @@ class BlingImportService:
         # ==================================================
         # 4. BUSCA PROPOSTA ANTERIOR COM MESMOS PRODUTOS E QUANTIDADES
         # ==================================================
-        # Extrai SKUs e quantidades da proposta atual
-        produtos_importados = {}  # {sku: quantidade}
-        for item in proposta.itens:
-            if item.produto and item.produto.sku:
-                produtos_importados[item.produto.sku] = item.quantidade
+        # Recarrega a proposta com itens e produtos para comparação confiável
+        proposta_com_itens = (
+            db.query(Proposta)
+            .options(joinedload(Proposta.itens).joinedload(PropostaProduto.produto))
+            .filter(Proposta.id == proposta.id)
+            .one()
+        )
+
+        # Extrai SKUs e quantidades da proposta atual (ordem irrelevante)
+        produtos_importados = BlingImportService._mapear_itens_por_sku(proposta_com_itens.itens)
         
         proposta_referencia = None
         simulacao_referencia = None
         
-        if produtos_importados and len(proposta.itens) > 0:
-            # Busca propostas anteriores que:
-            # 1. Tenham simulação concluída (status != pendente_simulacao)
-            # 2. Tenham os mesmos produtos com as mesmas quantidades
-            propostas_candidatas = (
-                db.query(Proposta)
-                .options(
-                    joinedload(Proposta.simulacao),
-                    joinedload(Proposta.itens).joinedload(PropostaProduto.produto)
-                )
-                .filter(
-                    Proposta.id != proposta.id,  # Não a própria proposta
-                    Proposta.simulacao.has(),  # Tem simulação
-                    Proposta.status != PropostaStatus.pendente_simulacao  # Já passou da simulação
-                )
-                .order_by(Proposta.criado_em.desc())  # Mais recentes primeiro
-                .all()
+        if produtos_importados and len(proposta_com_itens.itens) > 0:
+            proposta_referencia = BlingImportService._buscar_proposta_referencia(
+                db,
+                proposta_id_excluir=proposta.id,
+                produtos_importados=produtos_importados,
             )
-            
-            # Verifica qual proposta tem exatamente os mesmos produtos E quantidades
-            for candidata in propostas_candidatas:
-                produtos_candidata = {}  # {sku: quantidade}
-                for item in candidata.itens:
-                    if item.produto and item.produto.sku:
-                        produtos_candidata[item.produto.sku] = item.quantidade
-                
-                # Se os produtos E quantidades são exatamente os mesmos
-                if produtos_candidata == produtos_importados:
-                    proposta_referencia = candidata
-                    simulacao_referencia = candidata.simulacao
-                    break
+            simulacao_referencia = proposta_referencia.simulacao if proposta_referencia else None
         
         # ==================================================
         # 5. COPIA SIMULAÇÃO DA PROPOSTA ANTERIOR (SE ENCONTROU)
         # ==================================================
-        print(f"\n[DEBUG BLING] Caminho 5 - Proposta {proposta.id} com referência: {bool(simulacao_referencia and proposta_referencia)}")
+        BlingImportService._debug(
+            f"[BLING IMPORT] Proposta {proposta.id} com referência: {bool(simulacao_referencia and proposta_referencia)}"
+        )
         if simulacao_referencia and proposta_referencia:
-            print(f"[DEBUG BLING]   → Copiando simulação da proposta #{proposta_referencia.id}")
-            # Copia a simulação da proposta anterior
-            nova_simulacao = Simulacao(
-                proposta_id=proposta.id,
-                tipo=simulacao_referencia.tipo,
-                descricao=simulacao_referencia.descricao,
-                automatica=True,
+            BlingImportService._debug(
+                f"[BLING IMPORT] Copiando simulação da proposta #{proposta_referencia.id}"
             )
-            db.add(nova_simulacao)
-            
-            # Copia cubagem
-            proposta.cubagem_m3 = proposta_referencia.cubagem_m3
-            proposta.cubagem_ajustada = proposta_referencia.cubagem_ajustada
+            obs_sim = BlingImportService._aplicar_simulacao_de_referencia(
+                db,
+                proposta_destino=proposta,
+                proposta_referencia=proposta_referencia,
+            )
+            if not obs_sim:
+                obs_sim = "Importado do Bling: necessário simulação (sem medidas completas)"
+                PropostaService._atualizar_status(
+                    db=db,
+                    proposta=proposta,
+                    novo_status=PropostaStatus.pendente_simulacao,
+                    observacao=obs_sim,
+                    forcar_notificacao=True,
+                )
+                db.commit()
+                db.refresh(proposta)
+                return proposta
             
             # Avança direto para cotação
             PropostaService._atualizar_status(
                 db=db,
                 proposta=proposta,
                 novo_status=PropostaStatus.pendente_cotacao,
-                observacao=f"Simulação copiada da proposta #{proposta_referencia.id} (mesmos produtos)",
+                observacao=obs_sim,
                 forcar_notificacao=True,
             )
         else:
             # Sem proposta de referência - verifica se produtos têm medidas cadastradas
-            print(f"[DEBUG BLING] Caminho 6 - Proposta {proposta.id} sem referência")
+            BlingImportService._debug(f"[BLING IMPORT] Proposta {proposta.id} sem referência")
             produtos_com_medidas_completas = all(
                 item.produto and item.produto.possui_medidas_completas()
                 for item in proposta.itens
             )
-            print(f"[DEBUG BLING]   → Tem medidas completas: {produtos_com_medidas_completas}")
+            BlingImportService._debug(
+                f"[BLING IMPORT] Tem medidas completas: {produtos_com_medidas_completas}"
+            )
             
             if produtos_com_medidas_completas and len(proposta.itens) > 0:
-                # Calcula cubagem total baseado nas medidas dos produtos
-                cubagem_total_cm3 = 0.0
-                descricao_linhas = []
-                
-                for item_prop in proposta.itens:
-                    produto = item_prop.produto
-                    if produto.possui_medidas_completas():
-                        volume_unitario = (
-                            produto.comprimento_cm *
-                            produto.largura_cm *
-                            produto.altura_cm
-                        )
-                        volume_total_item = volume_unitario * item_prop.quantidade
-                        cubagem_total_cm3 += volume_total_item
-                        
-                        descricao_linhas.append(
-                            f"{item_prop.quantidade}x {produto.nome} "
-                        f"({produto.comprimento_cm}x{produto.largura_cm}x{produto.altura_cm} cm)"
-                    )
-                
-                if cubagem_total_cm3 > 0:
-                    # Converte para m³
-                    cubagem_m3 = cubagem_total_cm3 / 1_000_000
-                    
-                    # Cria simulação
+                peso_total_kg, cubagem_m3, descricao = BlingImportService._calcular_automatico_volumes(proposta)
+
+                if cubagem_m3 and descricao:
                     simulacao = Simulacao(
                         proposta_id=proposta.id,
                         tipo=TipoSimulacao.volumes,
-                        descricao="\n".join(descricao_linhas),
+                        descricao=descricao,
                         automatica=True,
                     )
                     db.add(simulacao)
-                    
-                    # Atualiza cubagem da proposta
-                    proposta.cubagem_m3 = round(cubagem_m3, 4)
+
+                    proposta.cubagem_m3 = cubagem_m3
                     proposta.cubagem_ajustada = False
+                    proposta.peso_total_kg = peso_total_kg
                     
-                    print(f"[DEBUG BLING]     → Tem cubagem, indo para cotação (m³: {cubagem_m3})")
+                    BlingImportService._debug(
+                        f"[BLING IMPORT] Tem cubagem, indo para cotação (m³: {cubagem_m3})"
+                    )
                     # Avança direto para COTAÇÃO
                     PropostaService._atualizar_status(
                         db=db,
@@ -576,7 +842,7 @@ class BlingImportService:
                     )
                 else:
                     # Tem produtos mas não conseguiu calcular cubagem
-                    print(f"[DEBUG BLING]     → Sem cubagem, indo para simulação")
+                    BlingImportService._debug("[BLING IMPORT] Sem cubagem, indo para simulação")
                     PropostaService._atualizar_status(
                         db=db,
                         proposta=proposta,
@@ -586,7 +852,7 @@ class BlingImportService:
                     )
             else:
                 # Sem medidas conhecidas, vai para simulação manual
-                print(f"[DEBUG BLING]   → Sem medidas, indo para simulação")
+                BlingImportService._debug("[BLING IMPORT] Sem medidas, indo para simulação")
                 PropostaService._atualizar_status(
                     db=db,
                     proposta=proposta,

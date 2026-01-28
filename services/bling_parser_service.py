@@ -20,12 +20,55 @@ class BlingParserService:
     def parse_doc_view(link: str) -> dict:
         id_bling = BlingParserService._extrair_id_bling(link)
 
-        response = requests.get(
-            link,
-            timeout=20,
-            headers={"User-Agent": "Mozilla/5.0 (FluxoLand)"},
-        )
-        response.raise_for_status()
+        def _norm(text: str) -> str:
+            t = unicodedata.normalize("NFKD", text or "")
+            t = "".join(ch for ch in t if not unicodedata.combining(ch))
+            return t.lower()
+
+        def _is_invalid_doc_view_html(texto: str) -> bool:
+            t = _norm(texto)
+            # Mensagem clássica do Bling quando o doc.view não é público/expirou.
+            return (
+                "este link para documento nao e valido" in t
+                or "link para documento nao e valido" in t
+                or "este link para documento nao e valido!" in t
+            )
+
+        def _fetch(headers: dict[str, str]) -> requests.Response:
+            resp = requests.get(link, timeout=25, headers=headers)
+            resp.raise_for_status()
+            return resp
+
+        headers_basicos = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        }
+
+        headers_retry = {
+            **headers_basicos,
+            "Referer": "https://www.bling.com.br/",
+            "Upgrade-Insecure-Requests": "1",
+        }
+
+        response = _fetch(headers_basicos)
+
+        # Algumas URLs de doc.view.php podem exigir sessão (link não público) ou estarem expiradas.
+        # Nesses casos o Bling retorna um HTML curtíssimo com mensagem de link inválido.
+        texto_bruto = (response.text or "").strip()
+        if _is_invalid_doc_view_html(texto_bruto):
+            # Retry: o Bling às vezes é sensível a headers; tentamos uma segunda vez.
+            response = _fetch(headers_retry)
+            texto_bruto = (response.text or "").strip()
+            if _is_invalid_doc_view_html(texto_bruto):
+                raise ValueError("Link do Bling inválido/expirado ou não público")
+
+        # Se vier um HTML muito pequeno, só tratamos como inválido se contiver explicitamente a mensagem.
+        # (Evita falsos-positivos e permite páginas mínimas, mas válidas.)
+        if len(texto_bruto) < 200 and _is_invalid_doc_view_html(texto_bruto):
+            raise ValueError("Link do Bling inválido/expirado ou não público")
 
         soup = BeautifulSoup(response.text, "html.parser")
 

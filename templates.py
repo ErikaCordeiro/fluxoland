@@ -1,7 +1,12 @@
 from fastapi.templating import Jinja2Templates
 
+from config import settings
+
 
 templates = Jinja2Templates(directory="templates")
+
+# Globais para templates
+templates.env.globals["PESO_CUBADO_FATOR"] = settings.peso_cubado_fator
 
 
 def format_money(value):

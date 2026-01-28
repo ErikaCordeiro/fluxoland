@@ -46,6 +46,10 @@ class Settings:
         # Logging
         self.log_level: str = os.getenv("LOG_LEVEL", "INFO")
 
+        # Transporte (peso cubado)
+        # Padrão rodoviário comum: 1 m³ = 300 kg
+        self.peso_cubado_fator: float = float(os.getenv("PESO_CUBADO_FATOR", "300"))
+
 
 @lru_cache()
 def get_settings() -> Settings:

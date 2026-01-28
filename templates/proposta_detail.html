@@ -26,8 +26,17 @@
     <!-- ================= CANCELAR ================= -->
     <div class="modal-actions-top">
       <form method="post" action="/propostas/{{ proposta.id }}/cancelar">
-        <button class="btn btn-danger">Cancelar Proposta</button>
+        <button class="btn-cancelar">Cancelar Proposta</button>
       </form>
+
+      {% if user and (user.role.value == 'lider' or proposta.vendedor_id == user.id) %}
+      <form method="post" action="/propostas/{{ proposta.id }}/excluir"
+        onsubmit="return confirm('Tem certeza que deseja EXCLUIR esta proposta? Essa ação não pode ser desfeita.');">
+        <button class="btn-excluir">
+          Excluir Proposta
+        </button>
+      </form>
+      {% endif %}
     </div>
 
     <!-- ================= STEPS ================= -->
@@ -385,14 +394,37 @@
             style="margin-top: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px;">
             {% set cubagem_final = proposta.cubagem_manual_m3 if (proposta.cubagem_ajustada and
             proposta.cubagem_manual_m3) else proposta.cubagem_m3 %}
+            {% set ns = namespace(volumes_total=0) %}
+            {% for item in proposta.itens %}
+            {% set ns.volumes_total = ns.volumes_total + (item.quantidade or 0) %}
+            {% endfor %}
+            {% if ns.volumes_total %}
+            <div>
+              <strong>Volumes (unidades):</strong> {{ ns.volumes_total }}
+            </div>
+            {% endif %}
             {% if cubagem_final %}
             <div>
-              <strong>Cubagem:</strong> {{ '%.4f' % cubagem_final }} m³
+              <strong>Cubagem:</strong> {{ '%.2f' % cubagem_final }} m³
             </div>
             {% endif %}
             {% if proposta.peso_total_kg %}
             <div>
-              <strong>Peso Total:</strong> {{ proposta.peso_total_kg }} kg
+              <strong>Peso Total:</strong> {{ '%.2f' % proposta.peso_total_kg }} kg
+            </div>
+            {% endif %}
+            {% if cubagem_final %}
+            {% set peso_cubado = cubagem_final * (PESO_CUBADO_FATOR or 300) %}
+            <div>
+              <strong>Peso Cubado:</strong> {{ '%.2f' % peso_cubado }} kg <span
+                style="color:#6b7280; font-size: 11px;">(1 m³ = {{ PESO_CUBADO_FATOR or 300 }} kg)</span>
+            </div>
+            {% endif %}
+            {% if cubagem_final and proposta.peso_total_kg %}
+            {% set peso_considerado = (proposta.peso_total_kg if proposta.peso_total_kg > peso_cubado else peso_cubado)
+            %}
+            <div>
+              <strong>Peso Considerado:</strong> {{ '%.2f' % peso_considerado }} kg
             </div>
             {% endif %}
           </div>

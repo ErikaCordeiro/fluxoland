@@ -13,6 +13,7 @@ from models import (
     Proposta,
     PropostaProduto,
     PropostaStatus,
+    UserRole,
     TipoSimulacao,
     Simulacao,
     Caixa,
@@ -126,7 +127,10 @@ def importar_proposta_bling(
     if isinstance(user, RedirectResponse):
         return user
 
-    dados = BlingParserService.parse_doc_view(link_bling)
+    try:
+        dados = BlingParserService.parse_doc_view(link_bling)
+    except ValueError:
+        return RedirectResponse("/propostas?erro=bling_link_invalido", status_code=HTTP_303_SEE_OTHER)
 
     cliente = dados.get("cliente")
     if not cliente or not cliente.get("nome"):
@@ -633,6 +637,9 @@ def cancelar_proposta(
     db: Session = Depends(get_db),
     user=Depends(get_current_user_html),
 ):
+    if isinstance(user, RedirectResponse):
+        return user
+
     proposta = db.get(Proposta, proposta_id)
     if not proposta:
         return RedirectResponse("/propostas", HTTP_303_SEE_OTHER)
@@ -650,6 +657,39 @@ def cancelar_proposta(
 
     db.commit()
     return RedirectResponse("/propostas", HTTP_303_SEE_OTHER)
+
+
+# ======================================================
+# EXCLUIR PROPOSTA
+# ======================================================
+@router.post("/{proposta_id}/excluir")
+def excluir_proposta(
+    proposta_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user_html),
+):
+    if isinstance(user, RedirectResponse):
+        return user
+
+    proposta = db.get(Proposta, proposta_id)
+    if not proposta:
+        return RedirectResponse("/propostas", status_code=HTTP_303_SEE_OTHER)
+
+    # Regra de permissão: líder pode excluir qualquer proposta.
+    # Usuário comum pode excluir apenas propostas que ele é o vendedor.
+    if getattr(user, "role", None) != UserRole.lider and proposta.vendedor_id != user.id:
+        return RedirectResponse(
+            f"/propostas/{proposta_id}?erro=sem_permissao",
+            status_code=HTTP_303_SEE_OTHER,
+        )
+
+    db.delete(proposta)
+    db.commit()
+
+    return RedirectResponse(
+        "/propostas?msg=proposta_excluida",
+        status_code=HTTP_303_SEE_OTHER,
+    )
 
 
 # ======================================================

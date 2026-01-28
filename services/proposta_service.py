@@ -1,5 +1,6 @@
 # services/proposta_service.py
 
+import os
 from datetime import datetime
 from sqlalchemy.orm import Session
 
@@ -171,16 +172,21 @@ class PropostaService:
         )
 
         db.commit()
-        
-        # Envia notificação WhatsApp após commit
+
+        # Envia notificação WhatsApp após commit (pode ser desabilitado por env var)
+        if os.getenv("DISABLE_WHATSAPP_NOTIFICATIONS", "").lower() in {"1", "true", "yes"}:
+            return
+
         print(f"\n[INFO] Tentando enviar WhatsApp para status: {novo_status}")
         try:
             from services.whatsapp_service import WhatsAppService
+
             resultado = WhatsAppService.enviar_notificacao_mudanca_status(db, proposta, novo_status)
             print(f"[INFO] Resultado: {'Sucesso' if resultado else 'Falhou'}")
         except Exception as e:
             print(f"[ERRO] Erro ao enviar notificação WhatsApp: {e}")
             import traceback
+
             traceback.print_exc()
 
     @staticmethod

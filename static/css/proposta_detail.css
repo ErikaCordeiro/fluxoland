@@ -89,6 +89,55 @@
 /* ============================= */
 /* AÇÃO CRÍTICA                  */
 /* ============================= */
+.modal-actions-top {
+    padding: 12px 20px;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.modal-actions-top form {
+    margin: 0;
+}
+
+.modal-actions-top button {
+    width: 100%;
+    margin: 0;
+    padding: 12px 18px;
+    border-radius: 8px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s ease;
+}
+
+.modal-actions-top button:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.modal-actions-top .btn-cancelar {
+    background: #FF8C00;
+    color: #ffffff;
+}
+
+.modal-actions-top .btn-cancelar:hover {
+    background: #E67E00;
+}
+
+.modal-actions-top .btn-excluir {
+    background: #b91c1c;
+    color: #ffffff;
+}
+
+.modal-actions-top .btn-excluir:hover {
+    background: #991b1b;
+}
+
 .modal-danger-action {
     padding: 12px 20px;
     background: #ffffff;

@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session
 from models import (
     Proposta,
     PropostaProduto,
+    TipoSimulacao,
 )
+
+from utils.medidas import format_dimensoes_m
 
 
 class CalculoService:
@@ -36,6 +39,8 @@ class CalculoService:
         if not produtos:
             return
 
+        descricao_linhas: list[str] = []
+
         for pp in produtos:
             produto = pp.produto
             qtd = pp.quantidade
@@ -61,6 +66,12 @@ class CalculoService:
                 )
                 volume_total_cm3 += volume_unitario * qtd
 
+                # Monta descrição no mesmo padrão do BlingImportService
+                nome = (produto.nome or "").strip() or (produto.sku or "Produto")
+                descricao_linhas.append(
+                    f"{qtd}x {nome} ({format_dimensoes_m(produto.comprimento_cm, produto.largura_cm, produto.altura_cm)} m)"
+                )
+
         # -------------------------------
         # SALVA RESULTADOS
         # -------------------------------
@@ -70,6 +81,16 @@ class CalculoService:
         proposta.cubagem_m3 = round(volume_total_cm3 / 1_000_000, 6)
 
         proposta.cubagem_ajustada = False
+
+        # Se existe simulação automática por volumes, mantém a descrição sincronizada
+        # com as dimensões atuais dos produtos.
+        if (
+            getattr(proposta, "simulacao", None)
+            and proposta.simulacao.automatica
+            and proposta.simulacao.tipo == TipoSimulacao.volumes
+            and descricao_linhas
+        ):
+            proposta.simulacao.descricao = "\n".join(descricao_linhas)
 
         db.commit()
 
