@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urljoin
 from datetime import datetime
 import re
 import unicodedata
@@ -529,9 +529,75 @@ class BlingParserService:
 
     @staticmethod
     def _extrair_imagem(linha) -> str | None:
-        img = linha.find("img")
-        if img and img.get("src"):
-            return img["src"]
+        """Tenta extrair uma URL de imagem do item.
+
+        O HTML do doc.view do Bling pode usar:
+        - <img src="...">, ou lazy-load via data-src/data-original
+        - srcset
+        - background-image em style
+
+        Retorna URL absoluta quando possível.
+        """
+
+        def _normalizar_url(raw: str | None) -> str | None:
+            if not raw:
+                return None
+            u = str(raw).strip().strip('"').strip("'")
+            if not u or u.startswith("data:"):
+                return None
+            if u.startswith("//"):
+                u = "https:" + u
+            # doc.view costuma entregar paths relativos
+            if u.startswith("/") or u.startswith("./"):
+                u = urljoin("https://www.bling.com.br/", u)
+            # Alguns casos vêm como path relativo sem barra (ex.: 'abc123.png')
+            parsed = urlparse(u)
+            if not parsed.scheme and not parsed.netloc:
+                u = urljoin("https://www.bling.com.br/", u)
+            return u
+
+        def _pegar_srcset(srcset: str | None) -> str | None:
+            if not srcset:
+                return None
+            # srcset: "url1 1x, url2 2x" -> pega o primeiro
+            first = srcset.split(",", 1)[0].strip()
+            if not first:
+                return None
+            return first.split(" ", 1)[0].strip()
+
+        # 1) Qualquer <img> dentro da linha
+        for img in (linha.find_all("img") or []):
+            url = (
+                img.get("src")
+                or img.get("data-src")
+                or img.get("data-original")
+                or img.get("data-lazy")
+                or _pegar_srcset(img.get("srcset"))
+            )
+            url = _normalizar_url(url)
+            if url:
+                return url
+
+        # 2) background-image no style
+        style = linha.get("style")
+        if style:
+            m = re.search(r"background-image\s*:\s*url\(([^)]+)\)", style, flags=re.IGNORECASE)
+            if m:
+                url = _normalizar_url(m.group(1))
+                if url:
+                    return url
+
+        # 3) background-image em algum elemento da linha
+        for el in linha.find_all(style=True)[:10]:
+            st = el.get("style")
+            if not st:
+                continue
+            m = re.search(r"url\(([^)]+)\)", st, flags=re.IGNORECASE)
+            if m:
+                url = _normalizar_url(m.group(1))
+                if url:
+                    return url
+
         return None
 
     @staticmethod

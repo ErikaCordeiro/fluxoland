@@ -739,14 +739,6 @@ def excluir_proposta(
     if not proposta:
         return RedirectResponse("/propostas", status_code=HTTP_303_SEE_OTHER)
 
-    # Regra de permissão: líder pode excluir qualquer proposta.
-    # Usuário comum pode excluir apenas propostas que ele é o vendedor.
-    if getattr(user, "role", None) != UserRole.lider and proposta.vendedor_id != user.id:
-        return RedirectResponse(
-            f"/propostas/{proposta_id}?erro=sem_permissao",
-            status_code=HTTP_303_SEE_OTHER,
-        )
-
     db.delete(proposta)
     db.commit()
 

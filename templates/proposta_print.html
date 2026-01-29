@@ -82,7 +82,7 @@
                         {% set pt = (item.preco_total if item.preco_total is defined else (pu * q)) %}
                         <td class="img-cell">
                             {% if item.imagem_url or (item.produto and item.produto.imagem_url) %}
-                            <img src="{{ item.imagem_url or item.produto.imagem_url }}" alt="img" class="thumb-img">
+                            <img src="{{ (item.imagem_url or item.produto.imagem_url) | bling_image_src }}" alt="img" class="thumb-img">
                             {% elif item.produto and (item.produto.sku or item.produto.nome) %}
                             <div class="thumb">{{ (item.produto.sku or item.produto.nome)[:2] }}</div>
                             {% else %}

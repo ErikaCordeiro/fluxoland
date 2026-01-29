@@ -18,9 +18,20 @@ def parse_float_ptbr(value: str) -> float | None:
 
     try:
         s = s.replace(" ", "")
-        # Remove separador de milhar pt-BR (ex: 1.358 -> 1358)
-        s = re.sub(r"\.(?=\d{3}(?:\D|$))", "", s)
-        s = s.replace(",", ".")
+        # Heurística de separadores:
+        # - Se tiver vírgula, assume pt-BR: '.' = milhar, ',' = decimal
+        # - Se NÃO tiver vírgula:
+        #     - se for padrão de milhares (ex: 1.234.567), remove '.'
+        #     - caso contrário, trata '.' como decimal (ex: 2.080 -> 2.08)
+        if "," in s:
+            # Remove separador de milhar pt-BR (ex: 1.358,25 -> 1358,25)
+            s = re.sub(r"\.(?=\d{3}(?:,|\D|$))", "", s)
+            s = s.replace(",", ".")
+        else:
+            # Ex.: 1.234.567 (sem decimais) => 1234567
+            # Obs.: com apenas um ponto (ex.: 2.080), é comum o dado vir como decimal (2.080kg).
+            if re.fullmatch(r"\d{1,3}(?:\.\d{3}){2,}", s):
+                s = s.replace(".", "")
         return float(s)
     except ValueError:
         return None
@@ -155,6 +166,17 @@ def extrair_peso_total_kg(descricao: str) -> float | None:
     if m:
         v = parse_float_ptbr(m.group(1))
         return v if v is not None else None
+
+    # Prioridade: "Peso real" explícito (mesmo sem "total")
+    m_real = re.search(
+        r"\bpeso\s*real\b[^\d]{0,20}(\d+(?:[\.,]\d+)*)\s*kg\b",
+        texto,
+        re.IGNORECASE,
+    )
+    if m_real:
+        v = parse_float_ptbr(m_real.group(1))
+        if v is not None:
+            return v
 
     # Prioridade: linhas de total (ex.: "Peso real total: 1.358 kg")
     m_total = re.search(

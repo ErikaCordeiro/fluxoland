@@ -29,7 +29,7 @@
         <button class="btn-cancelar">Cancelar Proposta</button>
       </form>
 
-      {% if user and (user.role.value == 'lider' or proposta.vendedor_id == user.id) %}
+      {% if user %}
       <form method="post" action="/propostas/{{ proposta.id }}/excluir"
         onsubmit="return confirm('Tem certeza que deseja EXCLUIR esta proposta? Essa ação não pode ser desfeita.');">
         <button class="btn-excluir">
@@ -184,7 +184,7 @@
                   <td class="img-cell">
                     {% if item.imagem_url %}
                     <div class="thumb">
-                      <img src="{{ item.imagem_url }}" alt="img" class="thumb-img" />
+                      <img src="{{ item.imagem_url | bling_image_src }}" alt="img" class="thumb-img" />
                     </div>
                     {% elif item.produto and item.produto.sku %}
                     <div class="thumb">{{ item.produto.sku[:2] }}</div>
