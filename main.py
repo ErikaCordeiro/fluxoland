@@ -22,6 +22,7 @@ from database import Base, SessionLocal, engine
 from models import User
 from routers import bling_import, caixas, propostas, simulacoes, transportadoras, contatos_notificacao, dashboard
 from routers import bling_media
+from integrations.bling import bling_auth, bling, bling_webhook
 from templates import templates
 from auto_migrate import verificar_e_executar_migrations
 
@@ -196,6 +197,9 @@ app.include_router(propostas.router, tags=["propostas"])
 app.include_router(transportadoras.router, tags=["transportadoras"])
 app.include_router(bling_import.router, tags=["integrations"])
 app.include_router(bling_media.router, tags=["integrations"])
+app.include_router(bling_auth.router, tags=["integrations"])
+app.include_router(bling_webhook.router, tags=["integrations"])
+app.include_router(bling.router, tags=["integrations"])
 app.include_router(caixas.router, tags=["caixas"])
 app.include_router(simulacoes.router, tags=["simulacoes"])
 app.include_router(contatos_notificacao.router, tags=["notificacoes"])

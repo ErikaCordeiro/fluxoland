@@ -21,6 +21,7 @@ fluxoland.db
 .env
 .env.local
 .env.production
+.bling_token.json
 
 # IDE
 .vscode/

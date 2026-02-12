@@ -8,6 +8,7 @@ from database import get_db
 from dependencies import get_current_user_api
 from services.bling_import_service import BlingImportService
 from services.bling_parser_service import BlingParserService
+from integrations.bling.bling_services import buscar_cliente_completo_por_pedido_numero
 
 router = APIRouter(
     prefix="/integracoes/bling/importar",
@@ -46,10 +47,29 @@ def importar_proposta_por_link(
             status_code=HTTP_303_SEE_OTHER,
         )
 
+    # Normaliza dados mascarados do doc.view (ex: ***) para permitir enriquecimento via API
+    cliente_doc_view = dados.get("cliente", {}) or {}
+    cliente_doc_view = _limpar_dados_mascarados(cliente_doc_view)
+
+    # Tenta enriquecer com dados completos via API autenticada do Bling
+    pedido = dados.get("pedido") or {}
+    numero_pedido = None
+    if isinstance(pedido, dict):
+        numero_pedido = pedido.get("numero")
+
+    cliente_api = None
+    if numero_pedido:
+        try:
+            cliente_api = buscar_cliente_completo_por_pedido_numero(numero_pedido)
+        except Exception:
+            cliente_api = None
+
+    cliente_final = _merge_cliente(cliente_doc_view, cliente_api)
+
     BlingImportService.importar_proposta_bling(
         db=db,
         id_bling=dados.get("id_bling") or id_bling,
-        cliente=dados.get("cliente", {"nome": "Cliente Bling"}),
+        cliente=cliente_final or {"nome": "Cliente Bling"},
         itens=dados.get("itens", []),
         vendedor_id=user.id,
         observacao="Importado via Bling",
@@ -76,3 +96,43 @@ def extrair_id_bling(link: str) -> str | None:
         return query["id"][0]
     except Exception:
         return None
+
+
+def _limpar_dados_mascarados(cliente: dict) -> dict:
+    """Remove campos mascarados (***), deixando-os vazios para permitir enriquecimento."""
+
+    def _clean(value: object) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            value = str(value)
+        v = value.strip()
+        if not v:
+            return None
+        if "*" in v:
+            return None
+        return v
+
+    return {
+        "nome": _clean(cliente.get("nome")),
+        "documento": _clean(cliente.get("documento")),
+        "endereco": _clean(cliente.get("endereco")),
+        "cidade": _clean(cliente.get("cidade")),
+        "telefone": _clean(cliente.get("telefone")),
+        "email": _clean(cliente.get("email")),
+        "cep": _clean(cliente.get("cep")),
+    }
+
+
+def _merge_cliente(base: dict, extra: dict | None) -> dict:
+    """Preenche campos vazios do base com dados do extra."""
+    if not extra:
+        return base
+
+    merged = dict(base)
+    for key, value in extra.items():
+        if not value:
+            continue
+        if not merged.get(key):
+            merged[key] = value
+    return merged

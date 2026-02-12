@@ -29,6 +29,15 @@
         <button class="btn-cancelar">Cancelar Proposta</button>
       </form>
 
+      {% if proposta.origem.value == 'BLING' or proposta.id_bling or (proposta.observacao_importacao and 'bling_numero:' in proposta.observacao_importacao) %}
+      <form method="post" action="/propostas/{{ proposta.id }}/reimportar-bling"
+        onsubmit="return confirm('Reimportar do Bling vai atualizar cliente/itens e pode ajustar o status. Deseja continuar?');">
+        <button class="btn-secondary">
+          Reimportar do Bling
+        </button>
+      </form>
+      {% endif %}
+
       {% if user %}
       <form method="post" action="/propostas/{{ proposta.id }}/excluir"
         onsubmit="return confirm('Tem certeza que deseja EXCLUIR esta proposta? Essa ação não pode ser desfeita.');">

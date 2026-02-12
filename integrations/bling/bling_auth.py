@@ -41,23 +41,28 @@ def trocar_code_por_token(code: str) -> dict:
     client_secret = os.getenv("BLING_CLIENT_SECRET")
     redirect_uri = os.getenv("BLING_REDIRECT_URI")
 
+    if not client_id or not client_secret or not redirect_uri:
+        raise ValueError("Variáveis do Bling não configuradas")
+
     response = requests.post(
         BLING_TOKEN_URL,
         data={
             "grant_type": "authorization_code",
             "code": code,
-            "client_id": client_id,
-            "client_secret": client_secret,
             "redirect_uri": redirect_uri,
         },
+        auth=(client_id, client_secret),
         timeout=30,
     )
 
-    response.raise_for_status()
+    if not response.ok:
+        raise ValueError(
+            f"Erro ao trocar token do Bling: {response.status_code} - {response.text}"
+        )
 
     token_data = response.json()
 
-    # salva token em memória (DEV)
+    # salva token em memória e disco
     set_bling_token(token_data)
 
     return token_data
@@ -84,7 +89,13 @@ def callback(code: str | None = None):
             status_code=400,
         )
 
-    trocar_code_por_token(code)
+    try:
+        trocar_code_por_token(code)
+    except ValueError as exc:
+        return JSONResponse(
+            {"erro": str(exc)},
+            status_code=400,
+        )
 
     return {
         "status": "ok",
