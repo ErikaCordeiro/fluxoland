@@ -92,6 +92,7 @@ async def receber_webhook_bling(
         vendedor_id=vendedor_id,
         observacao="Importado automaticamente via webhook Bling",
         pedido=dados_importacao.get("pedido"),
+        pular_se_igual=True,
     )
 
     return {"status": "ok"}

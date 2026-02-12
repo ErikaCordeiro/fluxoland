@@ -67,6 +67,89 @@ class BlingImportService:
         return produtos
 
     @staticmethod
+    def _norm_str(value: object) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            s = value.strip()
+            return s or None
+        s = str(value).strip()
+        return s or None
+
+    @staticmethod
+    def _norm_float(value: object) -> float | None:
+        if value is None:
+            return None
+        try:
+            return round(float(value), 4)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalizar_itens_importacao(itens: list[dict] | None) -> list[tuple]:
+        normalized: list[tuple] = []
+        for item in itens or []:
+            nome = BlingImportService._norm_str(item.get("nome")) or ""
+            sku = BlingImportService._norm_str(item.get("sku") or item.get("codigo")) or ""
+            quantidade = int(item.get("quantidade") or 1)
+            if quantidade <= 0:
+                quantidade = 1
+            preco_unitario = BlingImportService._norm_float(item.get("preco_unitario"))
+            preco_total = BlingImportService._norm_float(item.get("preco_total"))
+            normalized.append((sku, nome, quantidade, preco_unitario, preco_total))
+        normalized.sort()
+        return normalized
+
+    @staticmethod
+    def _normalizar_itens_db(itens: list[PropostaProduto] | None) -> list[tuple]:
+        normalized: list[tuple] = []
+        for item in itens or []:
+            sku = None
+            nome = None
+            if item.produto is not None:
+                sku = item.produto.sku
+                nome = item.produto.nome
+            if not sku:
+                sku = item.codigo
+            normalized.append(
+                (
+                    BlingImportService._norm_str(sku) or "",
+                    BlingImportService._norm_str(nome) or "",
+                    int(item.quantidade or 0),
+                    BlingImportService._norm_float(item.preco_unitario),
+                    BlingImportService._norm_float(item.preco_total),
+                )
+            )
+        normalized.sort()
+        return normalized
+
+    @staticmethod
+    def _dados_iguais_para_reimportar(
+        proposta: Proposta,
+        cliente: dict,
+        itens: list[dict],
+        pedido: dict | None,
+    ) -> bool:
+        cliente_nome = BlingImportService._norm_str(cliente.get("nome")) or ""
+        if not proposta.cliente or BlingImportService._norm_str(proposta.cliente.nome) != cliente_nome:
+            return False
+
+        for field in ("documento", "endereco", "cidade", "telefone", "email"):
+            novo = BlingImportService._norm_str(cliente.get(field))
+            atual = BlingImportService._norm_str(getattr(proposta.cliente, field, None))
+            if novo and novo != atual:
+                return False
+
+        desconto_novo = BlingImportService._norm_float((pedido or {}).get("desconto"))
+        desconto_atual = BlingImportService._norm_float(proposta.desconto)
+        if desconto_novo != desconto_atual:
+            return False
+
+        itens_novos = BlingImportService._normalizar_itens_importacao(itens)
+        itens_atual = BlingImportService._normalizar_itens_db(proposta.itens)
+        return itens_novos == itens_atual
+
+    @staticmethod
     def _score_referencia(candidata: Proposta) -> tuple:
         tem_peso = 1 if candidata.peso_total_kg else 0
         tem_cubagem_manual = 1 if candidata.cubagem_manual_m3 else 0
@@ -340,6 +423,7 @@ class BlingImportService:
         vendedor_id: int,
         observacao: str | None = None,
         pedido: dict | None = None,
+        pular_se_igual: bool = False,
     ) -> Proposta:
         """
         cliente = {
@@ -383,6 +467,14 @@ class BlingImportService:
         # Se encontrou uma proposta existente:
         # SEMPRE permite reimportação para atualizar dados do Bling
         if proposta_existente:
+            if pular_se_igual and BlingImportService._dados_iguais_para_reimportar(
+                proposta_existente,
+                cliente,
+                itens,
+                pedido,
+            ):
+                return proposta_existente
+
             simulacao_anterior = proposta_existente.simulacao
             tinha_simulacao = simulacao_anterior is not None
             cubagem_anterior = proposta_existente.cubagem_m3

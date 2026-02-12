@@ -252,7 +252,7 @@ def buscar_proposta_completa_por_numero(numero: str | None) -> dict | None:
     return item
 
 
-def buscar_propostas_rascunho() -> list[dict]:
+def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
     endpoints = ["/propostas/comerciais", "/propostas", "/pedidos/vendas"]
     params_list = [
         {"situacao": "rascunho"},
@@ -262,13 +262,27 @@ def buscar_propostas_rascunho() -> list[dict]:
 
     for endpoint in endpoints:
         for params in params_list:
-            try:
-                payload = bling_get(endpoint, params=params)
-                items = _extract_list(payload)
-                if items:
-                    return items
-            except Exception:
-                continue
+            pagina = 1
+            acumulado: list[dict] = []
+            while True:
+                request_params = dict(params)
+                request_params.update({"pagina": pagina, "limite": 100})
+                try:
+                    payload = bling_get(endpoint, params=request_params)
+                    items = _extract_list(payload)
+                    if not items:
+                        break
+
+                    acumulado.extend(items)
+                    if limite and len(acumulado) >= limite:
+                        return acumulado[:limite]
+
+                    pagina += 1
+                except Exception:
+                    break
+
+            if acumulado:
+                return acumulado
 
     return []
 

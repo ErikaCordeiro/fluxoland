@@ -14,6 +14,7 @@ from models import (
     Proposta,
     PropostaProduto,
     PropostaStatus,
+    PropostaOrigem,
     UserRole,
     TipoSimulacao,
     Simulacao,
@@ -235,10 +236,11 @@ def importar_rascunhos_bling(
         return user
 
     max_itens = int(os.getenv("BLING_IMPORT_RASCUNHO_MAX", "50") or 50)
-    propostas = buscar_propostas_rascunho()
+    propostas = buscar_propostas_rascunho(max_itens if max_itens > 0 else None)
     propostas = propostas[:max_itens] if max_itens > 0 else propostas
 
     importadas = 0
+    ignoradas = 0
     for item in propostas:
         numero = item.get("numero") or item.get("numeroProposta") or item.get("numeroPropostaComercial")
         if not numero:
@@ -262,6 +264,29 @@ def importar_rascunhos_bling(
         )
 
         id_bling = dados_importacao.get("id_bling") or numero
+
+        proposta_existente = (
+            db.query(Proposta)
+            .options(
+                joinedload(Proposta.cliente),
+                joinedload(Proposta.itens).joinedload(PropostaProduto.produto),
+            )
+            .filter(
+                Proposta.origem == PropostaOrigem.bling,
+                Proposta.id_bling == str(id_bling),
+            )
+            .first()
+        )
+
+        if proposta_existente and BlingImportService._dados_iguais_para_reimportar(
+            proposta_existente,
+            cliente_final or {"nome": "Cliente Bling"},
+            dados_importacao.get("itens", []),
+            dados_importacao.get("pedido"),
+        ):
+            ignoradas += 1
+            continue
+
         BlingImportService.importar_proposta_bling(
             db=db,
             id_bling=str(id_bling),
@@ -270,11 +295,12 @@ def importar_rascunhos_bling(
             vendedor_id=user.id,
             observacao="Importado via Bling (rascunho)",
             pedido=dados_importacao.get("pedido"),
+            pular_se_igual=True,
         )
         importadas += 1
 
     return RedirectResponse(
-        f"/propostas?importados={importadas}",
+        f"/propostas?importados={importadas}&ignorados={ignoradas}",
         status_code=HTTP_303_SEE_OTHER,
     )
 
