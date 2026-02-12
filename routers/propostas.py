@@ -1,4 +1,5 @@
 import re
+import os
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request, Form
@@ -31,6 +32,8 @@ from integrations.bling.bling_services import (
     buscar_cliente_completo_por_pedido_numero,
     buscar_pedido_venda_completo,
     buscar_pedido_venda_por_id,
+    buscar_proposta_completa_por_numero,
+    buscar_propostas_rascunho,
     mapear_pedido_para_importacao,
 )
 from services.proposta_service import PropostaService
@@ -139,53 +142,141 @@ def importar_proposta_bling(
     if isinstance(user, RedirectResponse):
         return user
 
-    try:
-        dados = BlingParserService.parse_doc_view(link_bling)
-    except ValueError:
-        return RedirectResponse("/propostas?erro=bling_link_invalido", status_code=HTTP_303_SEE_OTHER)
+    vendedor_id = user.id
+    link_input = (link_bling or "").strip()
 
-    cliente = _limpar_cliente_importacao(dados.get("cliente") or {})
-    if not cliente.get("nome"):
-        cliente = {"nome": "Cliente Bling"}
+    if link_input.lower().startswith("http"):
+        try:
+            dados = BlingParserService.parse_doc_view(link_input)
+        except ValueError:
+            return RedirectResponse("/propostas?erro=bling_link_invalido", status_code=HTTP_303_SEE_OTHER)
 
-    id_bling = dados.get("id_bling")
-    if not id_bling:
-        return RedirectResponse(
-            "/propostas?erro=bling_link_invalido",
-            status_code=HTTP_303_SEE_OTHER,
+        cliente = _limpar_cliente_importacao(dados.get("cliente") or {})
+        if not cliente.get("nome"):
+            cliente = {"nome": "Cliente Bling"}
+
+        id_bling = dados.get("id_bling")
+        if not id_bling:
+            return RedirectResponse(
+                "/propostas?erro=bling_link_invalido",
+                status_code=HTTP_303_SEE_OTHER,
+            )
+
+        pedido = dados.get("pedido", {})
+        numero_pedido = pedido.get("numero")
+        if numero_pedido:
+            try:
+                cliente_api = buscar_cliente_completo_por_pedido_numero(numero_pedido)
+                if cliente_api:
+                    for key, value in cliente_api.items():
+                        if value:
+                            cliente[key] = value
+            except Exception:
+                pass
+
+        nome_vendedor_bling = pedido.get("vendedor")
+        if nome_vendedor_bling:
+            vendedor = db.query(User).filter(User.nome == nome_vendedor_bling).first()
+            if vendedor:
+                vendedor_id = vendedor.id
+
+        BlingImportService.importar_proposta_bling(
+            db=db,
+            id_bling=id_bling,
+            cliente=cliente,
+            itens=dados.get("itens", []),
+            vendedor_id=vendedor_id,
+            observacao="Importado via Bling",
+            pedido=pedido,
+        )
+    else:
+        numero_bling = link_input
+        proposta_payload = buscar_proposta_completa_por_numero(numero_bling)
+        dados_importacao = mapear_pedido_para_importacao(proposta_payload)
+        if not dados_importacao:
+            return RedirectResponse(
+                "/propostas?erro=bling_numero_invalido",
+                status_code=HTTP_303_SEE_OTHER,
+            )
+
+        cliente_api = None
+        numero_pedido = dados_importacao.get("pedido", {}).get("numero")
+        if numero_pedido:
+            try:
+                cliente_api = buscar_cliente_completo_por_pedido_numero(numero_pedido)
+            except Exception:
+                cliente_api = None
+
+        cliente_final = _limpar_cliente_importacao(
+            _merge_cliente(dados_importacao.get("cliente") or {}, cliente_api)
         )
 
-    # Busca ou cria vendedor baseado no nome do Bling
-    vendedor_id = user.id  # Padrão: usuário logado
-    pedido = dados.get("pedido", {})
-    numero_pedido = pedido.get("numero")
-    if numero_pedido:
-        try:
-            cliente_api = buscar_cliente_completo_por_pedido_numero(numero_pedido)
-            if cliente_api:
-                for key, value in cliente_api.items():
-                    if value:
-                        cliente[key] = value
-        except Exception:
-            pass
-    nome_vendedor_bling = pedido.get("vendedor")
-    
-    if nome_vendedor_bling:
-        vendedor = db.query(User).filter(User.nome == nome_vendedor_bling).first()
-        if vendedor:
-            vendedor_id = vendedor.id
+        id_bling = dados_importacao.get("id_bling") or numero_bling
 
-    BlingImportService.importar_proposta_bling(
-        db=db,
-        id_bling=id_bling,
-        cliente=cliente,
-        itens=dados.get("itens", []),
-        vendedor_id=vendedor_id,
-        observacao="Importado via Bling",
-        pedido=pedido,
-    )
+        BlingImportService.importar_proposta_bling(
+            db=db,
+            id_bling=str(id_bling),
+            cliente=cliente_final or {"nome": "Cliente Bling"},
+            itens=dados_importacao.get("itens", []),
+            vendedor_id=vendedor_id,
+            observacao="Importado via Bling (numero)",
+            pedido=dados_importacao.get("pedido"),
+        )
 
     return RedirectResponse("/propostas", status_code=HTTP_303_SEE_OTHER)
+
+
+@router.post("/importar-rascunhos")
+def importar_rascunhos_bling(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user_html),
+):
+    if isinstance(user, RedirectResponse):
+        return user
+
+    max_itens = int(os.getenv("BLING_IMPORT_RASCUNHO_MAX", "50") or 50)
+    propostas = buscar_propostas_rascunho()
+    propostas = propostas[:max_itens] if max_itens > 0 else propostas
+
+    importadas = 0
+    for item in propostas:
+        numero = item.get("numero") or item.get("numeroProposta") or item.get("numeroPropostaComercial")
+        if not numero:
+            continue
+
+        proposta_payload = buscar_proposta_completa_por_numero(str(numero)) or item
+        dados_importacao = mapear_pedido_para_importacao(proposta_payload)
+        if not dados_importacao:
+            continue
+
+        cliente_api = None
+        numero_pedido = dados_importacao.get("pedido", {}).get("numero")
+        if numero_pedido:
+            try:
+                cliente_api = buscar_cliente_completo_por_pedido_numero(numero_pedido)
+            except Exception:
+                cliente_api = None
+
+        cliente_final = _limpar_cliente_importacao(
+            _merge_cliente(dados_importacao.get("cliente") or {}, cliente_api)
+        )
+
+        id_bling = dados_importacao.get("id_bling") or numero
+        BlingImportService.importar_proposta_bling(
+            db=db,
+            id_bling=str(id_bling),
+            cliente=cliente_final or {"nome": "Cliente Bling"},
+            itens=dados_importacao.get("itens", []),
+            vendedor_id=user.id,
+            observacao="Importado via Bling (rascunho)",
+            pedido=dados_importacao.get("pedido"),
+        )
+        importadas += 1
+
+    return RedirectResponse(
+        f"/propostas?importados={importadas}",
+        status_code=HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/{proposta_id}/reimportar-bling")

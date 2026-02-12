@@ -55,7 +55,79 @@ def _normalize_pedido_payload(payload: dict | None) -> dict | None:
         return payload.get("data")
     if isinstance(payload.get("pedido"), dict):
         return payload.get("pedido")
+    if isinstance(payload.get("proposta"), dict):
+        return payload.get("proposta")
     return payload
+
+
+def _extract_list(payload: dict | None) -> list[dict]:
+    if not payload or not isinstance(payload, dict):
+        return []
+    data = payload.get("data")
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+    for key in (
+        "propostas",
+        "propostasComerciais",
+        "propostas_comerciais",
+        "pedidos",
+        "itens",
+    ):
+        items = payload.get(key)
+        if isinstance(items, list):
+            return [item for item in items if isinstance(item, dict)]
+    return []
+
+
+def _extract_id(item: dict) -> str | None:
+    value = (
+        item.get("id")
+        or item.get("idProposta")
+        or item.get("propostaId")
+        or item.get("idPedido")
+        or item.get("pedidoId")
+    )
+    return str(value) if value else None
+
+
+def _extract_numero(item: dict) -> str | None:
+    value = (
+        item.get("numero")
+        or item.get("numeroProposta")
+        or item.get("numeroPropostaComercial")
+        or item.get("numero_loja")
+        or item.get("numeroLoja")
+    )
+    return str(value) if value else None
+
+
+def _buscar_item_por_numero(numero: str, endpoints: list[str]) -> tuple[dict | None, str | None]:
+    for endpoint in endpoints:
+        for params in (
+            {"numero": numero},
+            {"numero_loja": numero},
+            {"numeroLoja": numero},
+        ):
+            try:
+                payload = bling_get(endpoint, params=params)
+                item = _first_item(payload)
+                if item:
+                    return item, endpoint
+            except Exception:
+                continue
+    return None, None
+
+
+def _buscar_item_por_id(item_id: str, endpoints: list[str]) -> dict | None:
+    for endpoint in endpoints:
+        try:
+            payload = bling_get(f"{endpoint}/{item_id}")
+            item = _normalize_pedido_payload(payload)
+            if item:
+                return item
+        except Exception:
+            continue
+    return None
 
 
 def _to_float(value: object) -> float | None:
@@ -162,12 +234,53 @@ def buscar_pedido_venda_completo(numero: str | None) -> dict | None:
     return pedido
 
 
+def buscar_proposta_completa_por_numero(numero: str | None) -> dict | None:
+    if not numero:
+        return None
+
+    endpoints = ["/propostas/comerciais", "/propostas", "/pedidos/vendas"]
+    item, endpoint = _buscar_item_por_numero(numero, endpoints)
+    if not item:
+        return None
+
+    item_id = _extract_id(item)
+    if item_id:
+        full = _buscar_item_por_id(item_id, [endpoint] + [e for e in endpoints if e != endpoint])
+        if full:
+            return full
+
+    return item
+
+
+def buscar_propostas_rascunho() -> list[dict]:
+    endpoints = ["/propostas/comerciais", "/propostas", "/pedidos/vendas"]
+    params_list = [
+        {"situacao": "rascunho"},
+        {"situacao": "RASCUNHO"},
+        {"status": "rascunho"},
+    ]
+
+    for endpoint in endpoints:
+        for params in params_list:
+            try:
+                payload = bling_get(endpoint, params=params)
+                items = _extract_list(payload)
+                if items:
+                    return items
+            except Exception:
+                continue
+
+    return []
+
+
 def _extrair_itens_pedido(pedido: dict) -> list[dict]:
     raw_items = (
         pedido.get("itens")
         or pedido.get("itensPedido")
         or pedido.get("itensPedidoVenda")
         or pedido.get("itensVenda")
+        or pedido.get("itensProposta")
+        or pedido.get("itensPropostaComercial")
     )
 
     if isinstance(raw_items, dict):
@@ -238,7 +351,7 @@ def mapear_pedido_para_importacao(pedido_payload: dict | None) -> dict | None:
         return None
 
     pedido_id = pedido.get("id") or pedido.get("idPedido") or pedido.get("pedidoId")
-    numero = pedido.get("numero") or pedido.get("numero_loja") or pedido.get("numeroLoja")
+    numero = _extract_numero(pedido) or pedido.get("numero")
 
     vendedor = pedido.get("vendedor")
     if isinstance(vendedor, dict):

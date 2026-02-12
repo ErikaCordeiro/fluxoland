@@ -8,17 +8,17 @@
   <h1>Importar Proposta do Bling</h1>
 
   <p class="muted">
-    Cole abaixo o link público da proposta do Bling
+    Informe o número da proposta no Bling. Se preferir, cole o link público
     (<strong>doc.view.php</strong>).
   </p>
 
   <form method="post" action="/propostas/nova" class="form">
 
-    <label>Link da proposta (Bling)</label>
+    <label>Número ou link da proposta (Bling)</label>
     <input
-      type="url"
+      type="text"
       name="link_bling"
-      placeholder="https://www.bling.com.br/relatorios/doc.view.php?id=..."
+      placeholder="Ex: 29527 ou https://www.bling.com.br/relatorios/doc.view.php?id=..."
       required
     >
 

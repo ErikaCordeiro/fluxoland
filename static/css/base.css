@@ -469,6 +469,15 @@ form button {
   width: 100%;
 }
 
+/* Formulario inline para botoes em cabecalhos. */
+.inline-form {
+  display: inline;
+}
+
+.inline-form button {
+  width: auto;
+}
+
 /* ---------- BOTÃO PRINCIPAL ---------- */
 .btn-primary {
   background: #FF8C00;

@@ -12,6 +12,7 @@ from integrations.bling.bling_services import (
     buscar_cliente_completo_por_pedido_numero,
     buscar_pedido_venda_completo,
     buscar_pedido_venda_por_id,
+    buscar_proposta_completa_por_numero,
     mapear_pedido_para_importacao,
 )
 
@@ -41,10 +42,16 @@ async def receber_webhook_bling(
             status_code=401,
         )
 
+    status_bling = _extrair_status(payload)
+    if status_bling and status_bling != "rascunho":
+        return {"status": "ignorado", "motivo": "status_nao_rascunho"}
+
     pedido_id, numero = _extrair_referencia(payload)
 
     pedido_payload = None
-    if pedido_id:
+    if numero:
+        pedido_payload = buscar_proposta_completa_por_numero(numero)
+    if not pedido_payload and pedido_id:
         pedido_payload = buscar_pedido_venda_por_id(pedido_id)
     if not pedido_payload and numero:
         pedido_payload = buscar_pedido_venda_completo(numero)
@@ -145,6 +152,23 @@ def _extrair_referencia(payload: dict) -> tuple[str | None, str | None]:
         str(pedido_id) if pedido_id else None,
         str(numero) if numero else None,
     )
+
+
+def _extrair_status(payload: dict) -> str | None:
+    status = (
+        payload.get("status")
+        or payload.get("situacao")
+        or payload.get("statusAtual")
+        or payload.get("situacaoAtual")
+    )
+
+    pedido = payload.get("pedido") or payload.get("data")
+    if isinstance(pedido, dict):
+        status = status or pedido.get("status") or pedido.get("situacao")
+
+    if isinstance(status, str):
+        return status.strip().lower()
+    return None
 
 
 def _merge_cliente(base: dict, extra: dict | None) -> dict:
