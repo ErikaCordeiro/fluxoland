@@ -144,7 +144,7 @@ def importar_proposta_bling(
     except ValueError:
         return RedirectResponse("/propostas?erro=bling_link_invalido", status_code=HTTP_303_SEE_OTHER)
 
-    cliente = dados.get("cliente") or {}
+    cliente = _limpar_cliente_importacao(dados.get("cliente") or {})
     if not cliente.get("nome"):
         cliente = {"nome": "Cliente Bling"}
 
@@ -228,9 +228,8 @@ def reimportar_proposta_bling(
         except Exception:
             cliente_api = None
 
-    cliente_final = _merge_cliente(
-        dados_importacao.get("cliente") or {},
-        cliente_api,
+    cliente_final = _limpar_cliente_importacao(
+        _merge_cliente(dados_importacao.get("cliente") or {}, cliente_api)
     )
 
     id_bling = dados_importacao.get("id_bling") or pedido_id or numero_api
@@ -259,6 +258,37 @@ def _merge_cliente(base: dict, extra: dict | None) -> dict:
         if not merged.get(key):
             merged[key] = value
     return merged
+
+
+def _limpar_cliente_importacao(cliente: dict) -> dict:
+    limits = {
+        "nome": 200,
+        "documento": 50,
+        "endereco": 250,
+        "cidade": 120,
+        "telefone": 50,
+        "email": 120,
+    }
+
+    def _clean(value: object, *, limit: int | None = None) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            value = str(value)
+        v = value.strip()
+        if not v:
+            return None
+        if "*" in v:
+            return None
+        if limit is not None and len(v) > limit:
+            return v[:limit]
+        return v
+
+    cleaned = {}
+    for key, limit in limits.items():
+        cleaned[key] = _clean(cliente.get(key), limit=limit)
+
+    return cleaned
 
 
 def _extrair_numero_bling(obs: str | None) -> str | None:
