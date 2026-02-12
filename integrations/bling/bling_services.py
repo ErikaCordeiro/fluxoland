@@ -72,12 +72,25 @@ def _extract_list(payload: dict | None) -> list[dict]:
     data = payload.get("data")
     if isinstance(data, list):
         return [item for item in data if isinstance(item, dict)]
+    if isinstance(data, dict):
+        for key in (
+            "propostas",
+            "propostasComerciais",
+            "propostas_comerciais",
+            "pedidos",
+            "itens",
+            "items",
+        ):
+            items = data.get(key)
+            if isinstance(items, list):
+                return [item for item in items if isinstance(item, dict)]
     for key in (
         "propostas",
         "propostasComerciais",
         "propostas_comerciais",
         "pedidos",
         "itens",
+        "items",
     ):
         items = payload.get(key)
         if isinstance(items, list):
@@ -295,12 +308,21 @@ def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
                     payload = bling_get(endpoint, params=request_params)
                     items = _extract_list(payload)
                     if debug:
+                        data = payload.get("data") if isinstance(payload, dict) else None
+                        data_keys = list(data.keys()) if isinstance(data, dict) else None
+                        payload_keys = list(payload.keys()) if isinstance(payload, dict) else None
                         logger.info(
                             "[BLING][RASCUNHO] endpoint=%s pagina=%s filtro=%s itens=%s",
                             endpoint,
                             pagina,
                             request_params,
                             len(items),
+                        )
+                        logger.info(
+                            "[BLING][RASCUNHO] payload_keys=%s data_type=%s data_keys=%s",
+                            payload_keys,
+                            type(data).__name__ if data is not None else None,
+                            data_keys,
                         )
                     if not items:
                         break
@@ -324,12 +346,21 @@ def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
                 payload = bling_get(endpoint, params={"pagina": pagina, "limite": 100})
                 items = _extract_list(payload)
                 if debug:
+                    data = payload.get("data") if isinstance(payload, dict) else None
+                    data_keys = list(data.keys()) if isinstance(data, dict) else None
+                    payload_keys = list(payload.keys()) if isinstance(payload, dict) else None
                     logger.info(
                         "[BLING][RASCUNHO] endpoint=%s pagina=%s sem_filtro=%s itens=%s",
                         endpoint,
                         pagina,
                         {"pagina": pagina, "limite": 100},
                         len(items),
+                    )
+                    logger.info(
+                        "[BLING][RASCUNHO] payload_keys=%s data_type=%s data_keys=%s",
+                        payload_keys,
+                        type(data).__name__ if data is not None else None,
+                        data_keys,
                     )
                 if not items:
                     break
