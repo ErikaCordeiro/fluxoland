@@ -1,4 +1,10 @@
+import logging
+import os
+
 from integrations.bling.bling_client import bling_get
+
+
+logger = logging.getLogger(__name__)
 
 
 def _first_item(payload: dict | None):
@@ -270,6 +276,7 @@ def buscar_proposta_completa_por_numero(numero: str | None) -> dict | None:
 
 
 def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
+    debug = os.getenv("DEBUG_BLING_IMPORT", "").lower() in {"1", "true", "yes"}
     endpoints = ["/propostas/comerciais", "/propostas", "/pedidos/vendas"]
     params_list = [
         {"situacao": "rascunho"},
@@ -287,6 +294,14 @@ def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
                 try:
                     payload = bling_get(endpoint, params=request_params)
                     items = _extract_list(payload)
+                    if debug:
+                        logger.info(
+                            "[BLING][RASCUNHO] endpoint=%s pagina=%s filtro=%s itens=%s",
+                            endpoint,
+                            pagina,
+                            request_params,
+                            len(items),
+                        )
                     if not items:
                         break
 
@@ -308,6 +323,14 @@ def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
             try:
                 payload = bling_get(endpoint, params={"pagina": pagina, "limite": 100})
                 items = _extract_list(payload)
+                if debug:
+                    logger.info(
+                        "[BLING][RASCUNHO] endpoint=%s pagina=%s sem_filtro=%s itens=%s",
+                        endpoint,
+                        pagina,
+                        {"pagina": pagina, "limite": 100},
+                        len(items),
+                    )
                 if not items:
                     break
 
@@ -323,6 +346,9 @@ def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
 
         if acumulado:
             return acumulado
+
+    if debug:
+        logger.info("[BLING][RASCUNHO] nenhum rascunho encontrado")
 
     return []
 

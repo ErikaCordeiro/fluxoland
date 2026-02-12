@@ -235,6 +235,7 @@ def importar_rascunhos_bling(
     if isinstance(user, RedirectResponse):
         return user
 
+    debug = os.getenv("DEBUG_BLING_IMPORT", "").lower() in {"1", "true", "yes"}
     max_itens = int(os.getenv("BLING_IMPORT_RASCUNHO_MAX", "50") or 50)
     propostas = buscar_propostas_rascunho(max_itens if max_itens > 0 else None)
     propostas = propostas[:max_itens] if max_itens > 0 else propostas
@@ -298,6 +299,11 @@ def importar_rascunhos_bling(
             pular_se_igual=True,
         )
         importadas += 1
+
+    if debug:
+        print(
+            f"[BLING][RASCUNHO] total={len(propostas)} importados={importadas} ignorados={ignoradas}"
+        )
 
     return RedirectResponse(
         f"/propostas?importados={importadas}&ignorados={ignoradas}",
