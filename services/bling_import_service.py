@@ -415,6 +415,41 @@ class BlingImportService:
             return
 
     @staticmethod
+    def _aplicar_simulacao_automatica_se_medidas(
+        db: Session,
+        *,
+        proposta: Proposta,
+        observacao: str,
+    ) -> bool:
+        if not proposta.todos_produtos_possuem_medidas():
+            return False
+
+        peso_total_kg, cubagem_m3, descricao = BlingImportService._calcular_automatico_volumes(proposta)
+        if not cubagem_m3 or not descricao:
+            return False
+
+        nova_sim = Simulacao(
+            proposta_id=proposta.id,
+            tipo=TipoSimulacao.volumes,
+            descricao=descricao,
+            automatica=True,
+        )
+        BlingImportService._substituir_simulacao(db, proposta=proposta, nova_simulacao=nova_sim)
+        proposta.peso_total_kg = peso_total_kg
+        proposta.cubagem_m3 = cubagem_m3
+        proposta.cubagem_manual_m3 = None
+        proposta.cubagem_ajustada = False
+
+        PropostaService._atualizar_status(
+            db=db,
+            proposta=proposta,
+            novo_status=PropostaStatus.pendente_cotacao,
+            observacao=observacao,
+            forcar_notificacao=True,
+        )
+        return True
+
+    @staticmethod
     def importar_proposta_bling(
         db: Session,
         id_bling: str,
@@ -635,6 +670,18 @@ class BlingImportService:
                     return proposta_existente
 
                 BlingImportService._limpar_calculos(proposta_existente)
+                if BlingImportService._aplicar_simulacao_automatica_se_medidas(
+                    db,
+                    proposta=proposta_existente,
+                    observacao=(
+                        "Proposta reimportada do Bling - simulação automática "
+                        "(medidas completas)"
+                    ),
+                ):
+                    db.commit()
+                    db.refresh(proposta_existente)
+                    return proposta_existente
+
                 PropostaService._atualizar_status(
                     db=db,
                     proposta=proposta_existente,
@@ -674,6 +721,18 @@ class BlingImportService:
                     nova_simulacao=None,
                 )
                 BlingImportService._limpar_calculos(proposta_existente)
+
+                if BlingImportService._aplicar_simulacao_automatica_se_medidas(
+                    db,
+                    proposta=proposta_existente,
+                    observacao=(
+                        "Proposta reimportada do Bling - simulação automática "
+                        "(medidas completas)"
+                    ),
+                ):
+                    db.commit()
+                    db.refresh(proposta_existente)
+                    return proposta_existente
 
                 PropostaService._atualizar_status(
                     db=db,
@@ -837,6 +896,17 @@ class BlingImportService:
                 proposta_referencia=proposta_referencia,
             )
             if not obs_sim:
+                if BlingImportService._aplicar_simulacao_automatica_se_medidas(
+                    db,
+                    proposta=proposta,
+                    observacao=(
+                        "Importado do Bling - simulação automática (medidas completas)"
+                    ),
+                ):
+                    db.commit()
+                    db.refresh(proposta)
+                    return proposta
+
                 obs_sim = "Importado do Bling: necessário simulação (sem medidas completas)"
                 PropostaService._atualizar_status(
                     db=db,
@@ -860,6 +930,17 @@ class BlingImportService:
         else:
             # Sem proposta de referência: mantém pendente_simulacao.
             BlingImportService._debug(f"[BLING IMPORT] Proposta {proposta.id} sem referência")
+            if BlingImportService._aplicar_simulacao_automatica_se_medidas(
+                db,
+                proposta=proposta,
+                observacao=(
+                    "Proposta importada do Bling - simulação automática (medidas completas)"
+                ),
+            ):
+                db.commit()
+                db.refresh(proposta)
+                return proposta
+
             PropostaService._atualizar_status(
                 db=db,
                 proposta=proposta,
