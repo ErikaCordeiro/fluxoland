@@ -332,7 +332,15 @@ def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
                         return acumulado[:limite]
 
                     pagina += 1
-                except Exception:
+                except Exception as exc:
+                    if debug:
+                        logger.info(
+                            "[BLING][RASCUNHO] erro endpoint=%s pagina=%s filtro=%s erro=%s",
+                            endpoint,
+                            pagina,
+                            request_params,
+                            exc,
+                        )
                     break
 
             if acumulado:
@@ -372,7 +380,15 @@ def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
                             return acumulado[:limite]
 
                 pagina += 1
-            except Exception:
+            except Exception as exc:
+                if debug:
+                    logger.info(
+                        "[BLING][RASCUNHO] erro endpoint=%s pagina=%s sem_filtro=%s erro=%s",
+                        endpoint,
+                        pagina,
+                        {"pagina": pagina, "limite": 100},
+                        exc,
+                    )
                 break
 
         if acumulado:

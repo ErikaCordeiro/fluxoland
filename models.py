@@ -67,6 +67,19 @@ class User(Base):
 
 
 # ======================================================
+# BLING TOKEN
+# ======================================================
+
+class BlingToken(Base):
+    __tablename__ = "bling_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token_json = Column(Text, nullable=False)
+    criado_em = Column(DateTime, default=datetime.utcnow)
+    atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ======================================================
 # CLIENTE
 # ======================================================
 
