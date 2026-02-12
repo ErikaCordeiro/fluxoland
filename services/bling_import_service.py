@@ -124,7 +124,7 @@ class BlingImportService:
         return normalized
 
     @staticmethod
-    def _dados_iguais_para_reimportar(
+    def dados_iguais_para_reimportar(
         proposta: Proposta,
         cliente: dict,
         itens: list[dict],
@@ -467,7 +467,7 @@ class BlingImportService:
         # Se encontrou uma proposta existente:
         # SEMPRE permite reimportação para atualizar dados do Bling
         if proposta_existente:
-            if pular_se_igual and BlingImportService._dados_iguais_para_reimportar(
+            if pular_se_igual and BlingImportService.dados_iguais_para_reimportar(
                 proposta_existente,
                 cliente,
                 itens,

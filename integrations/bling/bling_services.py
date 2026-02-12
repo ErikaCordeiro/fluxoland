@@ -90,6 +90,23 @@ def _extract_id(item: dict) -> str | None:
     return str(value) if value else None
 
 
+def _is_rascunho(item: dict) -> bool:
+    status = (
+        item.get("status")
+        or item.get("situacao")
+        or item.get("statusAtual")
+        or item.get("situacaoAtual")
+    )
+
+    if isinstance(status, dict):
+        status = status.get("nome") or status.get("descricao") or status.get("valor")
+
+    if isinstance(status, str):
+        return status.strip().lower() == "rascunho"
+
+    return False
+
+
 def _extract_numero(item: dict) -> str | None:
     value = (
         item.get("numero")
@@ -283,6 +300,29 @@ def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
 
             if acumulado:
                 return acumulado
+
+    for endpoint in endpoints:
+        pagina = 1
+        acumulado: list[dict] = []
+        while True:
+            try:
+                payload = bling_get(endpoint, params={"pagina": pagina, "limite": 100})
+                items = _extract_list(payload)
+                if not items:
+                    break
+
+                for item in items:
+                    if _is_rascunho(item):
+                        acumulado.append(item)
+                        if limite and len(acumulado) >= limite:
+                            return acumulado[:limite]
+
+                pagina += 1
+            except Exception:
+                break
+
+        if acumulado:
+            return acumulado
 
     return []
 

@@ -278,7 +278,7 @@ def importar_rascunhos_bling(
             .first()
         )
 
-        if proposta_existente and BlingImportService._dados_iguais_para_reimportar(
+        if proposta_existente and BlingImportService.dados_iguais_para_reimportar(
             proposta_existente,
             cliente_final or {"nome": "Cliente Bling"},
             dados_importacao.get("itens", []),
