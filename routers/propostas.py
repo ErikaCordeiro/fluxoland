@@ -35,7 +35,7 @@ from integrations.bling.bling_services import (
     buscar_pedido_venda_completo,
     buscar_pedido_venda_por_id,
     buscar_proposta_completa_por_numero,
-    buscar_propostas_rascunho,
+    buscar_propostas,
     mapear_pedido_para_importacao,
 )
 from services.proposta_service import PropostaService
@@ -232,11 +232,16 @@ def importar_proposta_bling(
 def listar_rascunhos_bling(
     request: Request,
     erro: str | None = None,
+    filtro: str | None = None,
     db: Session = Depends(get_db),
     user=Depends(get_current_user_html),
 ):
     if isinstance(user, RedirectResponse):
         return user
+
+    filtro = (filtro or "rascunho").strip().lower()
+    if filtro not in {"rascunho", "todos", "outros"}:
+        filtro = "rascunho"
 
     try:
         get_headers()
@@ -249,14 +254,16 @@ def listar_rascunhos_bling(
                 "propostas": [],
                 "total": 0,
                 "erro": "bling_token",
+                "filtro": filtro,
             },
         )
 
     max_itens = int(os.getenv("BLING_IMPORT_RASCUNHO_MAX", "50") or 50)
-    propostas_raw = buscar_propostas_rascunho(max_itens if max_itens > 0 else None)
+    propostas_raw = buscar_propostas(max_itens if max_itens > 0 else None)
     propostas_raw = propostas_raw[:max_itens] if max_itens > 0 else propostas_raw
 
     propostas = [_mapear_resumo_rascunho(item) for item in propostas_raw]
+    propostas = _filtrar_rascunhos_resumo(propostas, filtro)
 
     return templates.TemplateResponse(
         "propostas_rascunhos.html",
@@ -266,6 +273,7 @@ def listar_rascunhos_bling(
             "propostas": propostas,
             "total": len(propostas),
             "erro": erro,
+            "filtro": filtro,
         },
     )
 
@@ -274,6 +282,7 @@ def listar_rascunhos_bling(
 def importar_rascunhos_bling(
     selecionados: list[str] = Form([]),
     modo: str | None = Form(None),
+    filtro: str | None = Form(None),
     db: Session = Depends(get_db),
     user=Depends(get_current_user_html),
 ):
@@ -288,6 +297,13 @@ def importar_rascunhos_bling(
             status_code=HTTP_303_SEE_OTHER,
         )
 
+    filtro = (filtro or "rascunho").strip().lower()
+    if filtro != "rascunho":
+        return RedirectResponse(
+            "/propostas/importar-rascunhos?erro=importacao_so_rascunho",
+            status_code=HTTP_303_SEE_OTHER,
+        )
+
     if modo == "selecionadas" and not selecionados:
         return RedirectResponse(
             "/propostas/importar-rascunhos?erro=nenhuma_selecionada",
@@ -296,7 +312,7 @@ def importar_rascunhos_bling(
 
     debug = os.getenv("DEBUG_BLING_IMPORT", "").lower() in {"1", "true", "yes"}
     max_itens = int(os.getenv("BLING_IMPORT_RASCUNHO_MAX", "50") or 50)
-    propostas = buscar_propostas_rascunho(max_itens if max_itens > 0 else None)
+    propostas = buscar_propostas(max_itens if max_itens > 0 else None)
     propostas = propostas[:max_itens] if max_itens > 0 else propostas
 
     selecionados_set = {str(item) for item in selecionados if item}
@@ -304,6 +320,8 @@ def importar_rascunhos_bling(
     importadas = 0
     ignoradas = 0
     for item in propostas:
+        if not _status_eh_rascunho(_extrair_status_rascunho(item)):
+            continue
         numero = _extrair_numero_rascunho(item)
         if not numero:
             continue
@@ -503,6 +521,12 @@ def _extrair_status_rascunho(item: dict) -> str | None:
     return None
 
 
+def _status_eh_rascunho(status: str | None) -> bool:
+    if not status:
+        return False
+    return status.strip().lower() == "rascunho"
+
+
 def _extrair_cliente_rascunho(item: dict) -> str | None:
     contato = item.get("contato") or item.get("cliente") or {}
     if isinstance(contato, dict):
@@ -557,6 +581,21 @@ def _mapear_resumo_rascunho(item: dict) -> dict:
         "data": _extrair_data_rascunho(item),
         "valor": _extrair_valor_rascunho(item),
     }
+
+
+def _filtrar_rascunhos_resumo(resumos: list[dict], filtro: str) -> list[dict]:
+    if filtro == "todos":
+        return resumos
+
+    filtrados: list[dict] = []
+    for resumo in resumos:
+        status = resumo.get("status")
+        eh_rascunho = _status_eh_rascunho(status)
+        if filtro == "rascunho" and eh_rascunho:
+            filtrados.append(resumo)
+        elif filtro == "outros" and not eh_rascunho:
+            filtrados.append(resumo)
+    return filtrados
 
 
 def _extrair_numero_bling(obs: str | None) -> str | None:

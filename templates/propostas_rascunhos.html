@@ -1,16 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}Rascunhos do Bling{% endblock %}
+{% block title %}Propostas do Bling{% endblock %}
 
 {% block content %}
 
 <div class="page-header">
-  <h1>Rascunhos do Bling</h1>
+  <h1>Propostas do Bling</h1>
   <div class="topbar-actions">
+    <form method="get" action="/propostas/importar-rascunhos" class="inline-form">
+      <select id="filtro" name="filtro" onchange="this.form.submit()">
+        <option value="rascunho" {% if filtro == "rascunho" %}selected{% endif %}>Rascunho</option>
+        <option value="todos" {% if filtro == "todos" %}selected{% endif %}>Todos</option>
+        <option value="outros" {% if filtro == "outros" %}selected{% endif %}>Outros</option>
+      </select>
+    </form>
     <a href="/propostas" class="btn-secondary">Voltar</a>
     <form method="post" action="/propostas/importar-rascunhos" class="inline-form"
       onsubmit="return confirm('Importar todos os rascunhos listados?');">
-      <button class="btn-primary" type="submit" name="modo" value="todos">
+      <input type="hidden" name="filtro" value="{{ filtro }}">
+      <button class="btn-primary" type="submit" name="modo" value="todos" {% if filtro != "rascunho" %}disabled{% endif %}>
         Importar todos
       </button>
     </form>
@@ -25,6 +33,14 @@
 <div class="box">
   <strong>Selecione ao menos uma proposta para importar.</strong>
 </div>
+{% elif erro == "importacao_so_rascunho" %}
+<div class="box">
+  <strong>Importacao permitida apenas para rascunhos.</strong>
+</div>
+{% elif filtro != "rascunho" %}
+<div class="box">
+  <strong>Importacao disponivel apenas no filtro Rascunho.</strong>
+</div>
 {% endif %}
 
 <div class="box">
@@ -32,6 +48,7 @@
 
   {% if propostas %}
   <form method="post" action="/propostas/importar-rascunhos">
+    <input type="hidden" name="filtro" value="{{ filtro }}">
     <div class="table-wrap">
       <table class="table">
         <thead>
@@ -76,13 +93,13 @@
     </div>
 
     <div class="kanban-filters" style="margin-top: 16px;">
-      <button class="btn-primary" type="submit" name="modo" value="selecionadas">
+      <button class="btn-primary" type="submit" name="modo" value="selecionadas" {% if filtro != "rascunho" %}disabled{% endif %}>
         Importar selecionadas
       </button>
     </div>
   </form>
   {% else %}
-  <p>Nenhum rascunho encontrado.</p>
+  <p>Nenhuma proposta encontrada.</p>
   {% endif %}
 </div>
 

@@ -416,6 +416,57 @@ def buscar_propostas_rascunho(limite: int | None = None) -> list[dict]:
     return []
 
 
+def buscar_propostas(limite: int | None = None) -> list[dict]:
+    debug = os.getenv("DEBUG_BLING_IMPORT", "").lower() in {"1", "true", "yes"}
+    endpoints = ["/propostas/comerciais", "/propostas", "/pedidos/vendas"]
+
+    for endpoint in endpoints:
+        pagina = 1
+        acumulado: list[dict] = []
+        while True:
+            try:
+                payload = bling_get(endpoint, params={"pagina": pagina, "limite": 100})
+                items = _extract_list(payload)
+                if debug:
+                    data = payload.get("data") if isinstance(payload, dict) else None
+                    data_keys = list(data.keys()) if isinstance(data, dict) else None
+                    payload_keys = list(payload.keys()) if isinstance(payload, dict) else None
+                    logger.info(
+                        "[BLING][LISTA] endpoint=%s pagina=%s itens=%s",
+                        endpoint,
+                        pagina,
+                        len(items),
+                    )
+                    logger.info(
+                        "[BLING][LISTA] payload_keys=%s data_type=%s data_keys=%s",
+                        payload_keys,
+                        type(data).__name__ if data is not None else None,
+                        data_keys,
+                    )
+                if not items:
+                    break
+
+                acumulado.extend(items)
+                if limite and len(acumulado) >= limite:
+                    return acumulado[:limite]
+
+                pagina += 1
+            except Exception as exc:
+                if debug:
+                    logger.info(
+                        "[BLING][LISTA] erro endpoint=%s pagina=%s erro=%s",
+                        endpoint,
+                        pagina,
+                        exc,
+                    )
+                break
+
+        if acumulado:
+            return acumulado
+
+    return []
+
+
 def _extrair_itens_pedido(pedido: dict) -> list[dict]:
     raw_items = (
         pedido.get("itens")
