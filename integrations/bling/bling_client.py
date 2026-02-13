@@ -8,6 +8,7 @@ from database import SessionLocal
 from models import BlingToken
 
 BASE_URL = "https://www.bling.com.br/Api/v3"
+BLING_TOKEN_URL = "https://www.bling.com.br/Api/v3/oauth/token"
 
 TOKEN_PATH = os.getenv("BLING_TOKEN_PATH", ".bling_token.json")
 bling_token: Optional[dict] = None
@@ -101,6 +102,47 @@ def get_headers() -> dict:
     }
 
 
+def _refresh_token() -> bool:
+    _ensure_token_loaded()
+    if not bling_token:
+        return False
+
+    refresh_token = bling_token.get("refresh_token")
+    if not refresh_token:
+        return False
+
+    client_id = os.getenv("BLING_CLIENT_ID")
+    client_secret = os.getenv("BLING_CLIENT_SECRET")
+    if not client_id or not client_secret:
+        logger.info("[BLING] refresh_token sem client_id/secret")
+        return False
+
+    try:
+        response = requests.post(
+            BLING_TOKEN_URL,
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+            },
+            auth=(client_id, client_secret),
+            timeout=30,
+        )
+    except Exception as exc:
+        logger.info("[BLING] falha ao renovar token: %s", exc)
+        return False
+
+    if not response.ok:
+        logger.info("[BLING] refresh_token falhou: %s - %s", response.status_code, response.text)
+        return False
+
+    token_data = response.json()
+    if isinstance(token_data, dict) and token_data.get("access_token"):
+        set_bling_token(token_data)
+        return True
+
+    return False
+
+
 def bling_get(endpoint: str, params: dict | None = None):
     response = requests.get(
         f"{BASE_URL}{endpoint}",
@@ -108,6 +150,14 @@ def bling_get(endpoint: str, params: dict | None = None):
         params=params,
         timeout=30,
     )
+
+    if response.status_code == 401 and _refresh_token():
+        response = requests.get(
+            f"{BASE_URL}{endpoint}",
+            headers=get_headers(),
+            params=params,
+            timeout=30,
+        )
 
     response.raise_for_status()
     return response.json()

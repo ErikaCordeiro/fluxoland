@@ -23,6 +23,7 @@ router = APIRouter(
 )
 
 
+@router.post("")
 @router.post("/")
 async def receber_webhook_bling(
     request: Request,
