@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Rascunhos do Bling{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>Rascunhos do Bling</h1>
+  <div class="topbar-actions">
+    <a href="/propostas" class="btn-secondary">Voltar</a>
+    <form method="post" action="/propostas/importar-rascunhos" class="inline-form"
+      onsubmit="return confirm('Importar todos os rascunhos listados?');">
+      <button class="btn-primary" type="submit" name="modo" value="todos">
+        Importar todos
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if erro == "bling_token" %}
+<div class="box">
+  <strong>Token do Bling nao configurado.</strong> Conecte o Bling e tente novamente.
+</div>
+{% elif erro == "nenhuma_selecionada" %}
+<div class="box">
+  <strong>Selecione ao menos uma proposta para importar.</strong>
+</div>
+{% endif %}
+
+<div class="box">
+  <p>Total encontrado: <strong>{{ total }}</strong></p>
+
+  {% if propostas %}
+  <form method="post" action="/propostas/importar-rascunhos">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 40px;">
+              <input type="checkbox" id="selecionar-tudo" aria-label="Selecionar tudo">
+            </th>
+            <th>Numero</th>
+            <th>Cliente</th>
+            <th>Vendedor</th>
+            <th>Status</th>
+            <th>Data</th>
+            <th>Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in propostas %}
+          <tr>
+            <td>
+              {% if p.numero %}
+              <input type="checkbox" name="selecionados" value="{{ p.numero }}" aria-label="Selecionar">
+              {% else %}
+              <input type="checkbox" disabled aria-label="Sem numero">
+              {% endif %}
+            </td>
+            <td>{{ p.numero or "-" }}</td>
+            <td>{{ p.cliente or "-" }}</td>
+            <td>{{ p.vendedor or "-" }}</td>
+            <td>{{ p.status or "-" }}</td>
+            <td>{{ p.data or "-" }}</td>
+            <td>
+              {% if p.valor is not none %}
+              {{ p.valor | money }}
+              {% else %}
+              -
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="kanban-filters" style="margin-top: 16px;">
+      <button class="btn-primary" type="submit" name="modo" value="selecionadas">
+        Importar selecionadas
+      </button>
+    </div>
+  </form>
+  {% else %}
+  <p>Nenhum rascunho encontrado.</p>
+  {% endif %}
+</div>
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var selecionarTudo = document.getElementById("selecionar-tudo");
+    if (!selecionarTudo) {
+      return;
+    }
+    selecionarTudo.addEventListener("change", function () {
+      var checks = document.querySelectorAll("input[name='selecionados']");
+      checks.forEach(function (item) {
+        item.checked = selecionarTudo.checked;
+      });
+    });
+  });
+</script>
+{% endblock %}
+
+{% endblock %}

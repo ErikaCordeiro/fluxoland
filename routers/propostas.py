@@ -228,8 +228,52 @@ def importar_proposta_bling(
     return RedirectResponse("/propostas", status_code=HTTP_303_SEE_OTHER)
 
 
+@router.get("/importar-rascunhos")
+def listar_rascunhos_bling(
+    request: Request,
+    erro: str | None = None,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user_html),
+):
+    if isinstance(user, RedirectResponse):
+        return user
+
+    try:
+        get_headers()
+    except Exception:
+        return templates.TemplateResponse(
+            "propostas_rascunhos.html",
+            {
+                "request": request,
+                "user": user,
+                "propostas": [],
+                "total": 0,
+                "erro": "bling_token",
+            },
+        )
+
+    max_itens = int(os.getenv("BLING_IMPORT_RASCUNHO_MAX", "50") or 50)
+    propostas_raw = buscar_propostas_rascunho(max_itens if max_itens > 0 else None)
+    propostas_raw = propostas_raw[:max_itens] if max_itens > 0 else propostas_raw
+
+    propostas = [_mapear_resumo_rascunho(item) for item in propostas_raw]
+
+    return templates.TemplateResponse(
+        "propostas_rascunhos.html",
+        {
+            "request": request,
+            "user": user,
+            "propostas": propostas,
+            "total": len(propostas),
+            "erro": erro,
+        },
+    )
+
+
 @router.post("/importar-rascunhos")
 def importar_rascunhos_bling(
+    selecionados: list[str] = Form([]),
+    modo: str | None = Form(None),
     db: Session = Depends(get_db),
     user=Depends(get_current_user_html),
 ):
@@ -240,7 +284,13 @@ def importar_rascunhos_bling(
         get_headers()
     except Exception:
         return RedirectResponse(
-            "/propostas?erro=bling_token",
+            "/propostas/importar-rascunhos?erro=bling_token",
+            status_code=HTTP_303_SEE_OTHER,
+        )
+
+    if modo == "selecionadas" and not selecionados:
+        return RedirectResponse(
+            "/propostas/importar-rascunhos?erro=nenhuma_selecionada",
             status_code=HTTP_303_SEE_OTHER,
         )
 
@@ -249,11 +299,16 @@ def importar_rascunhos_bling(
     propostas = buscar_propostas_rascunho(max_itens if max_itens > 0 else None)
     propostas = propostas[:max_itens] if max_itens > 0 else propostas
 
+    selecionados_set = {str(item) for item in selecionados if item}
+
     importadas = 0
     ignoradas = 0
     for item in propostas:
-        numero = item.get("numero") or item.get("numeroProposta") or item.get("numeroPropostaComercial")
+        numero = _extrair_numero_rascunho(item)
         if not numero:
+            continue
+
+        if selecionados_set and str(numero) not in selecionados_set:
             continue
 
         proposta_payload = buscar_proposta_completa_por_numero(str(numero)) or item
@@ -421,6 +476,87 @@ def _limpar_cliente_importacao(cliente: dict) -> dict:
         cleaned[key] = _clean(cliente.get(key), limit=limit)
 
     return cleaned
+
+
+def _extrair_numero_rascunho(item: dict) -> str | None:
+    value = (
+        item.get("numero")
+        or item.get("numeroProposta")
+        or item.get("numeroPropostaComercial")
+        or item.get("numero_loja")
+        or item.get("numeroLoja")
+    )
+    return str(value).strip() if value else None
+
+
+def _extrair_status_rascunho(item: dict) -> str | None:
+    status = (
+        item.get("status")
+        or item.get("situacao")
+        or item.get("statusAtual")
+        or item.get("situacaoAtual")
+    )
+    if isinstance(status, dict):
+        status = status.get("nome") or status.get("descricao") or status.get("valor")
+    if isinstance(status, str):
+        return status.strip()
+    return None
+
+
+def _extrair_cliente_rascunho(item: dict) -> str | None:
+    contato = item.get("contato") or item.get("cliente") or {}
+    if isinstance(contato, dict):
+        nome = contato.get("nome") or contato.get("razaoSocial") or contato.get("nomeFantasia")
+        return nome.strip() if isinstance(nome, str) and nome.strip() else None
+    if isinstance(contato, str):
+        return contato.strip() or None
+    return None
+
+
+def _extrair_vendedor_rascunho(item: dict) -> str | None:
+    vendedor = item.get("vendedor")
+    if isinstance(vendedor, dict):
+        vendedor = vendedor.get("nome") or vendedor.get("name")
+    if isinstance(vendedor, str):
+        return vendedor.strip() or None
+    return None
+
+
+def _extrair_data_rascunho(item: dict) -> str | None:
+    data = item.get("data") or item.get("dataEmissao") or item.get("dataProposta")
+    if isinstance(data, str):
+        return data.strip() or None
+    return None
+
+
+def _extrair_valor_rascunho(item: dict) -> float | None:
+    value = (
+        item.get("valorTotal")
+        or item.get("valor_total")
+        or item.get("valor")
+        or item.get("total")
+    )
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        return parse_float_ptbr(value)
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def _mapear_resumo_rascunho(item: dict) -> dict:
+    return {
+        "numero": _extrair_numero_rascunho(item),
+        "cliente": _extrair_cliente_rascunho(item),
+        "vendedor": _extrair_vendedor_rascunho(item),
+        "status": _extrair_status_rascunho(item),
+        "data": _extrair_data_rascunho(item),
+        "valor": _extrair_valor_rascunho(item),
+    }
 
 
 def _extrair_numero_bling(obs: str | None) -> str | None:
