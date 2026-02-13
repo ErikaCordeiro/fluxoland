@@ -29,7 +29,8 @@
         <button class="btn-cancelar">Cancelar Proposta</button>
       </form>
 
-      {% if proposta.origem.value == 'BLING' or proposta.id_bling or (proposta.observacao_importacao and 'bling_numero:' in proposta.observacao_importacao) %}
+      {% if proposta.origem.value == 'BLING' or proposta.id_bling or (proposta.observacao_importacao and 'bling_numero:'
+      in proposta.observacao_importacao) %}
       <form method="post" action="/propostas/{{ proposta.id }}/reimportar-bling"
         onsubmit="return confirm('Reimportar do Bling vai atualizar cliente/itens e pode ajustar o status. Deseja continuar?');">
         <button class="btn-secondary">
@@ -400,8 +401,10 @@
           {% endif %}
 
           {% if proposta.simulacao and proposta.simulacao.tipo == 'manual' %}
-          <form method="post" action="/propostas/{{ proposta.id }}/simulacao-manual/recalcular" style="margin-top: 10px;">
-            <button type="submit" class="btn-secondary" style="padding: 6px 10px; font-size: 12px;">Recalcular cubagem/peso do texto</button>
+          <form method="post" action="/propostas/{{ proposta.id }}/simulacao-manual/recalcular"
+            style="margin-top: 10px;">
+            <button type="submit" class="btn-secondary" style="padding: 6px 10px; font-size: 12px;">Recalcular
+              cubagem/peso do texto</button>
           </form>
           {% endif %}
 

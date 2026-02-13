@@ -14,13 +14,8 @@
 
   <header class="topbar">
     {% if request.session.get("user_id") %}
-    <button
-      type="button"
-      class="topbar-burger"
-      aria-label="Abrir menu"
-      aria-controls="mobile-drawer"
-      aria-expanded="false"
-    >
+    <button type="button" class="topbar-burger" aria-label="Abrir menu" aria-controls="mobile-drawer"
+      aria-expanded="false">
       ☰
     </button>
     {% endif %}

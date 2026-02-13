@@ -1,7 +1,9 @@
+import logging
 import os
 import secrets
-import requests
 from urllib.parse import urlencode
+
+import requests
 
 from fastapi import APIRouter
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -15,13 +17,23 @@ router = APIRouter(
 
 BLING_AUTH_URL = "https://www.bling.com.br/Api/v3/oauth/authorize"
 BLING_TOKEN_URL = "https://www.bling.com.br/Api/v3/oauth/token"
+logger = logging.getLogger(__name__)
 
 
 def gerar_url_autorizacao() -> str:
     client_id = os.getenv("BLING_CLIENT_ID")
     redirect_uri = os.getenv("BLING_REDIRECT_URI")
+    debug = os.getenv("DEBUG_BLING_IMPORT", "").lower() in {"1", "true", "yes"}
+
+    redirect_uri = redirect_uri.strip() if redirect_uri else None
 
     if not client_id or not redirect_uri:
+        if debug:
+            logger.info(
+                "[BLING][OAUTH] client_id=%s redirect_uri=%s",
+                client_id,
+                redirect_uri,
+            )
         return ""
 
     state = secrets.token_urlsafe(32)
@@ -33,13 +45,18 @@ def gerar_url_autorizacao() -> str:
         "state": state,
     }
 
-    return f"{BLING_AUTH_URL}?{urlencode(params)}"
+    url = f"{BLING_AUTH_URL}?{urlencode(params)}"
+    if debug:
+        logger.info("[BLING][OAUTH] auth_url=%s", url)
+    return url
 
 
 def trocar_code_por_token(code: str) -> dict:
     client_id = os.getenv("BLING_CLIENT_ID")
     client_secret = os.getenv("BLING_CLIENT_SECRET")
     redirect_uri = os.getenv("BLING_REDIRECT_URI")
+
+    redirect_uri = redirect_uri.strip() if redirect_uri else None
 
     if not client_id or not client_secret or not redirect_uri:
         raise ValueError("Variáveis do Bling não configuradas")

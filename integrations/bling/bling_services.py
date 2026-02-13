@@ -66,12 +66,25 @@ def _normalize_pedido_payload(payload: dict | None) -> dict | None:
     return payload
 
 
+def _unwrap_item(item: dict) -> dict:
+    for key in (
+        "proposta",
+        "pedido",
+        "propostaComercial",
+        "proposta_comercial",
+    ):
+        nested = item.get(key)
+        if isinstance(nested, dict):
+            return nested
+    return item
+
+
 def _extract_list(payload: dict | None) -> list[dict]:
     if not payload or not isinstance(payload, dict):
         return []
     data = payload.get("data")
     if isinstance(data, list):
-        return [item for item in data if isinstance(item, dict)]
+        return [_unwrap_item(item) for item in data if isinstance(item, dict)]
     if isinstance(data, dict):
         for key in (
             "propostas",
@@ -83,7 +96,7 @@ def _extract_list(payload: dict | None) -> list[dict]:
         ):
             items = data.get(key)
             if isinstance(items, list):
-                return [item for item in items if isinstance(item, dict)]
+                return [_unwrap_item(item) for item in items if isinstance(item, dict)]
     for key in (
         "propostas",
         "propostasComerciais",
@@ -94,27 +107,29 @@ def _extract_list(payload: dict | None) -> list[dict]:
     ):
         items = payload.get(key)
         if isinstance(items, list):
-            return [item for item in items if isinstance(item, dict)]
+            return [_unwrap_item(item) for item in items if isinstance(item, dict)]
     return []
 
 
 def _extract_id(item: dict) -> str | None:
+    base = _unwrap_item(item)
     value = (
-        item.get("id")
-        or item.get("idProposta")
-        or item.get("propostaId")
-        or item.get("idPedido")
-        or item.get("pedidoId")
+        base.get("id")
+        or base.get("idProposta")
+        or base.get("propostaId")
+        or base.get("idPedido")
+        or base.get("pedidoId")
     )
     return str(value) if value else None
 
 
 def _is_rascunho(item: dict) -> bool:
+    base = _unwrap_item(item)
     status = (
-        item.get("status")
-        or item.get("situacao")
-        or item.get("statusAtual")
-        or item.get("situacaoAtual")
+        base.get("status")
+        or base.get("situacao")
+        or base.get("statusAtual")
+        or base.get("situacaoAtual")
     )
 
     if isinstance(status, dict):
@@ -127,12 +142,13 @@ def _is_rascunho(item: dict) -> bool:
 
 
 def _extract_numero(item: dict) -> str | None:
+    base = _unwrap_item(item)
     value = (
-        item.get("numero")
-        or item.get("numeroProposta")
-        or item.get("numeroPropostaComercial")
-        or item.get("numero_loja")
-        or item.get("numeroLoja")
+        base.get("numero")
+        or base.get("numeroProposta")
+        or base.get("numeroPropostaComercial")
+        or base.get("numero_loja")
+        or base.get("numeroLoja")
     )
     return str(value) if value else None
 

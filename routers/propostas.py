@@ -29,6 +29,7 @@ from models import (
 from services.galpao_service import GalpaoService
 from services.bling_parser_service import BlingParserService
 from services.bling_import_service import BlingImportService
+from integrations.bling.bling_client import get_headers
 from integrations.bling.bling_services import (
     buscar_cliente_completo_por_pedido_numero,
     buscar_pedido_venda_completo,
@@ -234,6 +235,14 @@ def importar_rascunhos_bling(
 ):
     if isinstance(user, RedirectResponse):
         return user
+
+    try:
+        get_headers()
+    except Exception:
+        return RedirectResponse(
+            "/propostas?erro=bling_token",
+            status_code=HTTP_303_SEE_OTHER,
+        )
 
     debug = os.getenv("DEBUG_BLING_IMPORT", "").lower() in {"1", "true", "yes"}
     max_itens = int(os.getenv("BLING_IMPORT_RASCUNHO_MAX", "50") or 50)
