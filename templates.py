@@ -4,7 +4,29 @@ from urllib.parse import quote, urlparse, urljoin
 from config import settings
 
 
-templates = Jinja2Templates(directory="templates")
+class CompatJinja2Templates(Jinja2Templates):
+    """Support old and new Starlette TemplateResponse signatures."""
+
+    def TemplateResponse(self, *args, **kwargs):
+        if args and isinstance(args[0], str):
+            name = args[0]
+            context = args[1] if len(args) > 1 else kwargs.pop("context", {})
+            if "request" not in context:
+                raise ValueError("Template context must include a request.")
+
+            remaining_args = args[2:]
+            return super().TemplateResponse(
+                context["request"],
+                name,
+                context,
+                *remaining_args,
+                **kwargs,
+            )
+
+        return super().TemplateResponse(*args, **kwargs)
+
+
+templates = CompatJinja2Templates(directory="templates")
 
 # Globais para templates
 templates.env.globals["PESO_CUBADO_FATOR"] = settings.peso_cubado_fator
