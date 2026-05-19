@@ -2,10 +2,32 @@ services:
   - type: web
     name: fluxoland-api
     runtime: python
-    env: python
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
     envVars:
       - key: SESSION_SECRET_KEY
         generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fluxoland-db
+          property: connectionString
+      - key: DEBUG
+        value: false
+      - key: CREATE_DEFAULT_ADMIN
+        value: true
+      - key: DEFAULT_ADMIN_NAME
+        value: Administrador
+      - key: DEFAULT_ADMIN_EMAIL
+        sync: false
+      - key: DEFAULT_ADMIN_PASSWORD
+        sync: false
+      - key: WHATSAPP_BOT_CONVERSA_TOKEN
+        sync: false
+
+databases:
+  - name: fluxoland-db
+    plan: free
+    databaseName: fluxoland
+    user: fluxoland

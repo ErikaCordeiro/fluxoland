@@ -134,21 +134,37 @@ def _run_migrations() -> None:
 
 
 def _create_default_admin() -> None:
-    """Create default admin user if no users exist."""
+    """Create the first admin user when explicitly configured."""
     db = SessionLocal()
     try:
         if db.query(User).count() == 0:
+            if os.getenv("CREATE_DEFAULT_ADMIN", "false").lower() != "true":
+                logger.warning(
+                    "No users found. Set CREATE_DEFAULT_ADMIN=true with "
+                    "DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD to create one."
+                )
+                return
+
+            admin_email = os.getenv("DEFAULT_ADMIN_EMAIL")
+            admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD")
+            admin_name = os.getenv("DEFAULT_ADMIN_NAME", "Administrador")
+
+            if not admin_email or not admin_password:
+                logger.error(
+                    "CREATE_DEFAULT_ADMIN=true requires DEFAULT_ADMIN_EMAIL "
+                    "and DEFAULT_ADMIN_PASSWORD."
+                )
+                return
+
             admin_user = User(
-                nome="SAC AM Ferramentas",
-                email="sac@amferramentas.com.br",
-                senha_hash=get_password_hash("AmF123"),
+                nome=admin_name,
+                email=admin_email,
+                senha_hash=get_password_hash(admin_password),
                 role="lider"
             )
             db.add(admin_user)
             db.commit()
-            logger.info(
-                "Default admin user created: sac@amferramentas.com.br / AmF123"
-            )
+            logger.info("Default admin user created: %s", admin_email)
     except Exception as e:
         logger.error(f"Error creating default admin user: {e}")
         db.rollback()
@@ -188,6 +204,12 @@ async def home(request: Request) -> RedirectResponse:
     if request.session.get("user_id"):
         return RedirectResponse(url="/dashboard", status_code=302)
     return RedirectResponse(url="/login", status_code=302)
+
+
+@app.get("/healthz", tags=["health"])
+async def healthz() -> dict[str, str]:
+    """Health check endpoint used by Render."""
+    return {"status": "ok"}
 
 
 # Include routers
